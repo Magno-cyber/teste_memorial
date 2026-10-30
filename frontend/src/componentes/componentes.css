@@ -2,6 +2,12 @@
 .m-img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 3px; }
 .m-img--moldura { display: grid; place-items: center; color: rgb(255 255 255 / .82); }
 
+/* ---------- foto de época (apresentação, décadas, marcos) ---------- */
+.m-epoca { position: relative; width: 100%; height: 100%; padding: 12px; background: var(--branco); box-shadow: 0 10px 26px rgb(43 42 40 / .14); }
+.m-epoca .m-img { border-radius: 2px; }
+.m-epoca img.m-img { filter: sepia(.4) contrast(.96) saturate(.85); }
+.m-epoca::after { content: ''; position: absolute; inset: 12px; pointer-events: none; box-shadow: inset 0 0 36px rgb(70 48 12 / .3); }
+
 /* ---------- polaroide ---------- */
 .m-pol {
   display: flex; flex-direction: column; gap: 10px;

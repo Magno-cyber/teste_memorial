@@ -1,15 +1,22 @@
 /**
- * As cinco salas do percurso. É o mesmo conteúdo que a migração do backend cria; o app usa estes
- * valores na escolha de sala e enquanto a primeira resposta do servidor não chega.
+ * Os seis espaços do percurso. O app usa estes valores na escolha de sala e enquanto a primeira
+ * resposta do servidor não chega; depois, nome, título e cor vêm da API (a do servidor vale).
+ *
+ * Fundação, Diretores, Professores, Artes e Esporte são salas de conteúdo. A Sala 06 (Alunos) tem
+ * as mesmas abas e mais a aba Colegas, que mostra a busca de ex-alunos (tipo 'fechamento').
  */
 import type { Sala } from './tipos';
 
 export const SALAS_PADRAO: Sala[] = [
-  { numero: 1, slug: 'educacao', nome: 'Educação', titulo: 'Retrospectiva da educação', subtitulo: 'Como se ensina e se aprende aqui, de 1958 até hoje', cor: '#4A4844', tipo: 'conteudo' },
-  { numero: 2, slug: 'trofeus', nome: 'Troféus', titulo: 'Sala de troféus', subtitulo: 'Conquistas esportivas, culturais e acadêmicas', cor: '#84673A', tipo: 'conteudo' },
-  { numero: 3, slug: 'artes', nome: 'Artes', titulo: 'Artes', subtitulo: 'Música, teatro, dança e artes visuais na escola', cor: '#8E5444', tipo: 'conteudo' },
-  { numero: 4, slug: 'professoras', nome: 'Professoras', titulo: 'Nossas professoras', subtitulo: 'As mulheres que ensinaram gerações de alunos', cor: '#5A6650', tipo: 'conteudo' },
-  { numero: 5, slug: 'fechamento', nome: 'Fechamento', titulo: 'Encontre seus colegas', subtitulo: 'Todos que fizeram check-in no Memorial. Pesquise por nome ou por ano.', cor: '#2B2A28', tipo: 'fechamento' },
+  { numero: 1, slug: 'fundacao', nome: 'Fundação', titulo: 'Fundação', subtitulo: 'Como tudo começou, em 1958', cor: '#8E6918', tipo: 'conteudo' },
+  { numero: 2, slug: 'diretores', nome: 'Diretores', titulo: 'Diretores', subtitulo: 'Quem conduziu a escola em cada época', cor: '#2F62B0', tipo: 'conteudo' },
+  { numero: 3, slug: 'professores', nome: 'Professores', titulo: 'Professores', subtitulo: 'Quem ensinou gerações de alunos', cor: '#17805F', tipo: 'conteudo' },
+  { numero: 4, slug: 'artes', nome: 'Artes', titulo: 'Artes', subtitulo: 'Música, teatro, dança e artes visuais', cor: '#C43F60', tipo: 'conteudo' },
+  { numero: 5, slug: 'esporte', nome: 'Esporte', titulo: 'Esporte', subtitulo: 'Jogos, equipes e conquistas', cor: '#B85A0C', tipo: 'conteudo' },
+  { numero: 6, slug: 'alunos', nome: 'Alunos', titulo: 'Alunos', subtitulo: 'Gerações que passaram por aqui', cor: '#6E4BA8', tipo: 'fechamento' },
 ];
 
 export const salaPadrao = (n: number): Sala => SALAS_PADRAO.find((s) => s.numero === n) ?? SALAS_PADRAO[0];
+
+/** "1" → "01": o selo e os rótulos do totem usam dois dígitos. */
+export const dois = (n: number) => String(n).padStart(2, '0');

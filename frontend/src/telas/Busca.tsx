@@ -1,5 +1,5 @@
 /**
- * Sala 5 · Busca: nome (teclado virtual), ano (só anos que existem no diretório) e década.
+ * Sala 06 · aba Colegas · Busca: nome (teclado virtual), ano (só anos que existem no diretório) e década.
  * Ano e década se combinam: escolher um ano zera a década, e vice-versa. Mais de 12 resultados
  * ganham páginas com setas (nada é cortado em silêncio).
  */
@@ -43,10 +43,11 @@ export function Busca({ sala, estado: st, mudar, busca, anoInicial, aoCheckin }:
 
   return (
     <div className={['tt-busca', st.teclado && 'tt-busca--teclado'].filter(Boolean).join(' ')}>
-      <Titulo sala={sala} />
-      <button type="button" className="tt-ck-btn" onClick={aoCheckin}>
-        <Icone nome="qr" tamanho={22} cor="var(--dourado-texto)" /> Ainda não fez check-in?
-      </button>
+      <Titulo
+        sala={sala}
+        titulo="Encontre seus colegas"
+        subtitulo="Todos que fizeram check-in no Memorial. Pesquise por nome ou por ano."
+      />
 
       <div className="tt-sbar">
         <label className={['tt-sin tt-cartao', st.teclado && 'is-ativo'].filter(Boolean).join(' ')}>
@@ -83,6 +84,9 @@ export function Busca({ sala, estado: st, mudar, busca, anoInicial, aoCheckin }:
           </select>
           <Icone nome="chev" tamanho={22} className="tt-sel__seta" />
         </label>
+        <button type="button" className="tt-ck-btn" onClick={aoCheckin}>
+          <Icone nome="qr" tamanho={22} cor="var(--dourado-texto)" /> Ainda não fez check-in?
+        </button>
       </div>
 
       <div className="tt-chips" role="group" aria-label="Por década">

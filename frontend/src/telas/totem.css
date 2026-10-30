@@ -50,13 +50,13 @@
 /* ---------- abas em pílula ---------- */
 .tt-abas {
   position: absolute; right: 52px; top: 50px;
-  display: flex; gap: 4px; padding: 5px;
+  display: flex; gap: 2px; padding: 5px;
   background: var(--areia); border-radius: var(--raio-pilula);
 }
 .tt-aba {
   display: flex; align-items: center; gap: 10px;
-  height: var(--toque); padding: 0 26px; border-radius: var(--raio-pilula);
-  font-size: var(--t-botao); font-weight: 600; color: var(--grafite-2);
+  height: var(--toque); padding: 0 20px; border-radius: var(--raio-pilula);
+  font-size: var(--t-botao); font-weight: 600; color: var(--grafite-2); white-space: nowrap;
   transition: background var(--dur) var(--curva), color var(--dur) var(--curva);
 }
 .tt-aba:active { background: rgb(43 42 40 / .08); }

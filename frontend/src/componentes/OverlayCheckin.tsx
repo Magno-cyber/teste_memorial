@@ -5,7 +5,7 @@ import { QrCode } from './QrCode';
 const PASSOS = [
   ['Leia o QR Code', 'Com a câmera do seu celular.'],
   ['Preencha seus dados', 'Nome, ano, turma e, se quiser, fotos e redes sociais.'],
-  ['Siga o percurso', 'Seu nome aparece aqui, na sala 5, para os colegas encontrarem.'],
+  ['Siga o percurso', 'Seu nome aparece aqui, na Sala 06 (Alunos), para os colegas encontrarem.'],
 ] as const;
 
 export function OverlayCheckin({ url, aoFechar }: { url: string; aoFechar: () => void }) {

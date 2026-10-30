@@ -18,6 +18,7 @@ const P: Record<string, ReactNode> = {
   heart: <path d="M12 20s-8-5-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0120 9c0 6-8 11-8 11z" />,
   image: <><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="9" cy="10" r="1.6" /><path d="M21 16l-5-5-9 8" /></>,
   door: <><path d="M5 21V4a1 1 0 011-1h12a1 1 0 011 1v17M3 21h18" /><circle cx="15" cy="12" r=".8" fill="currentColor" /></>,
+  home: <><path d="M3 11l9-7 9 7" /><path d="M5 10v10h14V10M10 20v-6h4v6" /></>,
   search: <><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></>,
   play: <path d="M8 5v14l11-7z" fill="currentColor" />,
   pause: <path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor" />,

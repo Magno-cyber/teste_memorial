@@ -1,6 +1,6 @@
 /**
  * Check-in do visitante, no próprio celular: nome, ano, turma, e-mail, redes (opcionais), até 3
- * fotos (opcionais) e a autorização obrigatória. Quem faz check-in aparece na sala 5.
+ * fotos (opcionais) e a autorização obrigatória. Quem faz check-in aparece na Sala 06 (Alunos).
  */
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import assinatura from '../assets/memorial/assinatura.png';
@@ -40,7 +40,7 @@ export function Checkin() {
       </header>
       {quiosque.demo && (
         <p className="ck-demo" role="note">
-          <b>Modo demonstração:</b> nada é enviado. O check-in fica só neste navegador e aparece na sala 5 aberta nele.
+          <b>Modo demonstração:</b> nada é enviado. O check-in fica só neste navegador e aparece na Sala 06 (Alunos) aberta nele.
         </p>
       )}
       <main className="ck-corpo">
@@ -109,7 +109,7 @@ function Formulario({ config, aoConcluir }: { config: ConfigCheckin; aoConcluir:
   return (
     <form ref={form} className="ck-form" onSubmit={enviar} noValidate>
       <h1 className="serif">Registre sua passagem</h1>
-      <p className="ck-dica">Seus dados aparecem na sala 5 do Memorial. O <span className="sem-quebra">e-mail</span> nunca é mostrado.</p>
+      <p className="ck-dica">Seus dados aparecem na Sala 06 (Alunos) do Memorial. O <span className="sem-quebra">e-mail</span> nunca é mostrado.</p>
 
       <Campo rotulo="Nome completo" erro={erros.nome}>
         {(id, desc) => (
@@ -238,7 +238,7 @@ function Sucesso({ nome, aoRecomecar }: { nome: string; aoRecomecar: () => void 
     <div className="ck-ok" role="status">
       <div className="ck-ok__selo"><Icone nome="check" tamanho={48} traco={2.2} cor="var(--dourado)" /></div>
       <h1 className="serif" ref={titulo} tabIndex={-1}>Check-in feito, {nome}!</h1>
-      <p>Siga o percurso. Na sala 5, seus colegas encontram você pelo nome.</p>
+      <p>Siga o percurso. Na Sala 06 (Alunos), seus colegas encontram você pelo nome.</p>
       <button type="button" className="ck-ok__outro" onClick={aoRecomecar}>Fazer outro check-in</button>
     </div>
   );

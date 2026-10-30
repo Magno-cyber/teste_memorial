@@ -1,26 +1,36 @@
-/** Salas 1 a 4: abas História, Fotos e Vídeos, com a foto ampliada e o player em overlay. */
+/**
+ * Um espaço do tour: abas Apresentação, Linha do tempo, Marcos, Fotos e Vídeos, com a foto
+ * ampliada e o player em overlay. A Sala 06 (tipo "fechamento") ganha a aba Colegas, com a busca
+ * de ex-alunos e o perfil (check-in feito pelo celular do visitante).
+ */
 import { useMemo, type ReactNode } from 'react';
-import { Icone } from '../componentes/Icone';
+import { OverlayCheckin } from '../componentes/OverlayCheckin';
 import { OverlayFoto } from '../componentes/OverlayFoto';
 import { OverlayVideo } from '../componentes/OverlayVideo';
-import { periodosDasFotos } from '../dados/regras';
+import { useAlunos } from '../dados/alunos';
+import { apresentacaoDaSala, decadasDaSala, marcosOrdenados, periodosDasFotos } from '../dados/regras';
 import type { Foto, RespostaSala } from '../dados/tipos';
+import { AbasSala, abaValida } from './AbasSala';
+import { Apresentacao } from './Apresentacao';
+import { Colegas } from './Colegas';
 import { Fotos, FOTOS_POR_PAGINA } from './Fotos';
-import { Historia } from './Historia';
+import { LinhaDoTempo } from './LinhaDoTempo';
+import { Marcos } from './Marcos';
 import { Moldura, Titulo } from './Moldura';
 import type { Aba, PropsSala } from './estado';
 import { Videos } from './Videos';
-
-const ABAS: { id: Aba; rotulo: string; icone: string }[] = [
-  { id: 'historia', rotulo: 'História', icone: 'clock' },
-  { id: 'fotos', rotulo: 'Fotos', icone: 'image' },
-  { id: 'videos', rotulo: 'Vídeos', icone: 'video' },
-];
+import './sala5.css';
 
 export function SalaConteudo({ estado: st, mudar, dados }: PropsSala & { dados: RespostaSala }) {
   const { sala, config } = dados;
+  const aba = abaValida(sala, st.aba);
+  const nasColegas = aba === 'colegas';
+  const naBusca = nasColegas && (st.visao === 'busca' || st.perfilId === null);
+  const noPerfil = nasColegas && !naBusca;
 
-  const marcos = useMemo(() => [...dados.marcos].sort((a, b) => a.ano - b.ano), [dados.marcos]);
+  const marcos = useMemo(() => marcosOrdenados(dados.marcos), [dados.marcos]);
+  const decadas = useMemo(() => decadasDaSala(dados, new Date().getFullYear()), [dados]);
+  const apresentacao = apresentacaoDaSala(dados);
   // a moldura provisória de uma foto sem imagem usa os ícones da própria sala
   const iconeDaFoto = useMemo(() => {
     const icones = marcos.map((m) => m.icone);
@@ -34,11 +44,23 @@ export function SalaConteudo({ estado: st, mudar, dados }: PropsSala & { dados: 
   const videos = dados.videos;
   const videoDestaque = videos.find((v) => v.id === st.videoId) ?? videos.find((v) => v.destaque) ?? videos[0];
 
-  const dica: ReactNode = {
-    historia: <><b>Toque em um ano</b> ou em um cartão para ver o marco em destaque{marcos.length > 10 ? ' · arraste para os lados' : ''}</>,
+  // busca de ex-alunos: só consulta o servidor quando a aba Colegas está na busca
+  const busca = useAlunos(
+    { q: st.q, ano: st.ano, decada: st.decada, pagina: st.paginaBusca },
+    naBusca && st.overlay === null,
+  );
+  const urlCheckin = config.urlCheckin || `${location.origin}/checkin`;
+
+  const dicas: Record<Aba, ReactNode> = {
+    apresentacao: <><b>Toque em uma aba</b> para explorar este espaço</>,
+    linha: <><b>Toque em uma década</b> para ver o resumo e os acontecimentos</>,
+    marcos: <><b>Toque em um marco</b> para ver o texto explicativo</>,
     fotos: <><b>Toque em uma foto</b> para ampliar · escolha o período na lista à esquerda</>,
     videos: <><b>Toque em um vídeo</b> para assistir em tela cheia</>,
-  }[st.aba];
+    colegas: naBusca
+      ? <><b>Busca sem acento e por parte do nome</b> · ex.: “joao sil” encontra João Pedro da Silva Sales</>
+      : <>Mostra só o que a pessoa autorizou no check-in · <b>o e-mail nunca aparece</b></>,
+  };
 
   const ov = st.overlay;
   let sobre: ReactNode = null;
@@ -57,27 +79,27 @@ export function SalaConteudo({ estado: st, mudar, dados }: PropsSala & { dados: 
   } else if (ov?.tipo === 'video') {
     const v = videos.find((x) => x.id === ov.id);
     if (v) sobre = <OverlayVideo video={v} comSom={config.videosComSom} aoFechar={() => mudar({ overlay: null })} />;
+  } else if (ov?.tipo === 'checkin' && nasColegas) {
+    sobre = <OverlayCheckin url={urlCheckin} aoFechar={() => mudar({ overlay: null })} />;
   }
 
+  // o teclado virtual ocupa a parte de baixo: as abas saem de cena enquanto ele está aberto
+  const mostrarAbas = !noPerfil && !(naBusca && st.teclado);
+
   return (
-    <Moldura sala={sala} dica={dica} exemplo={dados.demonstrativo} sobre={sobre}>
-      <Titulo sala={sala} />
-      <div className="tt-abas" role="tablist" aria-label="Conteúdo da sala">
-        {ABAS.map((a) => (
-          <button
-            key={a.id}
-            type="button"
-            role="tab"
-            aria-selected={st.aba === a.id}
-            className={['tt-aba', st.aba === a.id && 'is-ativa'].filter(Boolean).join(' ')}
-            onClick={() => mudar({ aba: a.id, overlay: null })}
-          >
-            <Icone nome={a.icone} tamanho={20} /> {a.rotulo}
-          </button>
-        ))}
-      </div>
-      {st.aba === 'historia' && <Historia marcos={marcos} destaqueId={st.marcoId} aoEscolher={(id) => mudar({ marcoId: id })} />}
-      {st.aba === 'fotos' && (
+    <Moldura
+      sala={sala}
+      dica={dicas[aba]}
+      exemplo={dados.demonstrativo}
+      aviso={naBusca && busca.offline && busca.pagina ? 'Sem conexão: mostrando o último resultado' : undefined}
+      sobre={sobre}
+    >
+      {!nasColegas && <Titulo sala={sala} />}
+      {mostrarAbas && <AbasSala sala={sala} aba={aba} aoEscolher={(a) => mudar({ aba: a, overlay: null, teclado: false })} />}
+      {aba === 'apresentacao' && <Apresentacao apresentacao={apresentacao} semente={sala.numero} aoIr={(a) => mudar({ aba: a, overlay: null })} />}
+      {aba === 'linha' && <LinhaDoTempo decadas={decadas} indice={st.linha} aoEscolher={(linha) => mudar({ linha })} />}
+      {aba === 'marcos' && <Marcos marcos={marcos} aberto={st.marcoAberto} aoAlternar={(marcoAberto) => mudar({ marcoAberto })} />}
+      {aba === 'fotos' && (
         <Fotos
           periodos={periodos}
           periodo={periodo}
@@ -88,9 +110,10 @@ export function SalaConteudo({ estado: st, mudar, dados }: PropsSala & { dados: 
           aoAbrir={(indice) => mudar({ overlay: { tipo: 'foto', indice } })}
         />
       )}
-      {st.aba === 'videos' && (
+      {aba === 'videos' && (
         <Videos videos={videos} destaque={videoDestaque} aoAbrir={(id) => mudar({ videoId: id, overlay: { tipo: 'video', id } })} />
       )}
+      {nasColegas && <Colegas estado={st} mudar={mudar} dados={dados} busca={busca} />}
     </Moldura>
   );
 }
