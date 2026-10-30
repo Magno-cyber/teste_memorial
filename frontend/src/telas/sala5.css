@@ -8,14 +8,14 @@
   height: 62px; padding: 0 24px; border-radius: var(--raio-pilula);
   border: 1.5px solid var(--dourado); font-size: var(--t-botao); font-weight: 600; color: var(--grafite);
 }
-.tt-ck-btn:active { background: rgb(176 141 87 / .14); }
+.tt-ck-btn:active { background: rgb(194 154 69 / .14); }
 
 .tt-sbar { display: flex; gap: 14px; margin-top: 20px; }
 .tt-sin {
   flex: 1; display: flex; align-items: center; gap: 14px;
   height: 62px; padding: 0 12px 0 22px; border: 1.5px solid var(--dourado);
 }
-.tt-sin.is-ativo { box-shadow: 0 0 0 4px rgb(176 141 87 / .2); }
+.tt-sin.is-ativo { box-shadow: 0 0 0 4px rgb(194 154 69 / .2); }
 .tt-sin input {
   flex: 1; min-width: 0; border: 0; background: transparent; outline: none;
   font: 500 22px var(--sans); color: var(--grafite);
@@ -23,7 +23,7 @@
 .tt-sin input::placeholder { color: var(--suave-2); }
 .tt-sin input::-webkit-search-cancel-button { display: none; }
 .tt-sin__limpar { width: var(--toque); height: var(--toque); border-radius: 50%; display: grid; place-items: center; color: var(--suave); }
-.tt-sin__limpar:active { background: rgb(43 42 40 / .06); }
+.tt-sin__limpar:active { background: rgb(35 33 29 / .06); }
 .tt-sel { position: relative; width: 250px; height: 62px; padding: 6px 18px; display: flex; flex-direction: column; justify-content: center; }
 .tt-sel small { font-size: var(--t-micro); letter-spacing: .18em; font-weight: 700; color: var(--dourado-texto); line-height: 1.2; }
 .tt-sel select {
@@ -81,7 +81,7 @@
 .m-tecla {
   min-width: 96px; height: 62px; padding: 0 14px; border-radius: 10px;
   display: flex; align-items: center; justify-content: center; gap: 8px;
-  background: var(--grafite-2); color: var(--marfim); border: 1px solid rgb(243 240 234 / .1);
+  background: var(--grafite-2); color: var(--marfim); border: 1px solid rgb(246 248 248 / .1);
   font: 600 24px var(--sans);
 }
 .m-tecla:active { background: var(--dourado); color: var(--grafite); }
@@ -122,7 +122,7 @@
   height: var(--toque); padding: 0 28px; border-bottom: 3px solid transparent; margin-bottom: -1px;
   font-size: var(--t-botao); font-weight: 600; color: var(--suave);
 }
-.tt-ptab:active { background: rgb(43 42 40 / .06); }
+.tt-ptab:active { background: rgb(35 33 29 / .06); }
 .tt-ptab.is-ativa { color: var(--rc); border-bottom-color: var(--rc); }
 .tt-pbody { margin-top: 16px; }
 .tt-pgeral { display: flex; gap: 36px; align-items: flex-start; }
@@ -130,17 +130,18 @@
 .tt-pcard {
   position: relative; width: 400px; flex: none; overflow: hidden;
   padding: 26px 28px 24px; border-radius: 14px;
-  background: var(--grafite); color: var(--marfim); box-shadow: 0 16px 36px rgb(43 42 40 / .25);
+  background: linear-gradient(135deg, var(--dourado-claro), var(--dourado)); color: var(--grafite);
+  box-shadow: 0 16px 36px rgb(35 33 29 / .2);
 }
-.tt-pcard__marca { position: absolute; right: -90px; bottom: -90px; width: 300px; opacity: .045; pointer-events: none; }
-.tt-pcard__moldura { position: absolute; inset: 10px; border: 1px solid rgb(176 141 87 / .35); border-radius: 9px; pointer-events: none; }
+.tt-pcard__marca { position: absolute; right: -80px; bottom: -110px; width: 300px; opacity: .3; pointer-events: none; }
+.tt-pcard__moldura { position: absolute; inset: 10px; border: 1px solid rgb(255 255 255 / .55); border-radius: 9px; pointer-events: none; }
 .tt-pcard__kv { position: relative; display: grid; grid-template-columns: 1.25fr 1fr; gap: 10px; margin: 0; }
-.tt-pcard__kv div { background: rgb(243 240 234 / .07); border-radius: 6px; padding: 10px 14px; }
-.tt-pcard__kv dt { font-size: var(--t-micro); letter-spacing: .06em; font-weight: 700; color: var(--dourado-claro); line-height: 1.3; }
+.tt-pcard__kv div { background: rgb(255 255 255 / .4); border-radius: 6px; padding: 10px 14px; }
+.tt-pcard__kv dt { font-size: var(--t-micro); letter-spacing: .06em; font-weight: 700; color: var(--grafite-2); line-height: 1.3; }
 .tt-pcard__kv dd { margin: 2px 0 0; font-size: 28px; font-weight: 700; line-height: 1.1; }
 .tt-pcard__rede {
   position: relative; display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 10px 14px; border-radius: 6px;
-  background: rgb(243 240 234 / .07); border: 1px solid rgb(176 141 87 / .35);
+  background: rgb(255 255 255 / .4); border: 1px solid rgb(255 255 255 / .6);
   font-size: var(--t-apoio); overflow-wrap: anywhere;
 }
 .tt-sobre { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; max-width: 980px; margin: 0; }

@@ -72,6 +72,10 @@ components:
     rounded: "{rounded.cartao}"
 ---
 
+> **Atenção (30/10/2026):** o frontend usa a identidade "Proposta B · dourado e branco gelo". Os valores vigentes
+> estão em `frontend/src/estilos/tokens.css` (e os contrastes, em `contraste.test.ts`). O front matter e as tabelas
+> deste arquivo ainda descrevem a paleta anterior (grafite e marfim quente) e precisam ser atualizados.
+
 # Design System: Memorial Dom Bosco
 
 ## Overview

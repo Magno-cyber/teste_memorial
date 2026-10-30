@@ -150,7 +150,7 @@ export function Perfil({ id, aba, aoMudarAba, aoVoltar, aoAbrir }: Props) {
               </dl>
               {redes.map((r) => (
                 <div key={r.icone} className="tt-pcard__rede">
-                  <Icone nome={r.icone} tamanho={20} cor="var(--dourado-claro)" />
+                  <Icone nome={r.icone} tamanho={20} cor="var(--grafite)" />
                   <span className="so-leitor">{r.rotulo}: </span>
                   {r.texto}
                 </div>

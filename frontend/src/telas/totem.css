@@ -2,7 +2,7 @@
 .tt {
   position: absolute; inset: 0;
   display: flex; flex-direction: column;
-  background: var(--marfim) radial-gradient(circle at 85% 10%, rgb(176 141 87 / .07), transparent 40%);
+  background: var(--marfim) radial-gradient(circle at 85% 10%, rgb(194 154 69 / .07), transparent 40%);
   color: var(--grafite);
   --rc: var(--sala-1);
 }
@@ -12,20 +12,21 @@
   height: 78px; flex: none;
   display: flex; align-items: center; gap: 26px;
   padding: 0 40px;
-  background: var(--grafite); color: var(--marfim);
+  background: var(--cartao); color: var(--grafite);
+  border-bottom: 3px solid var(--rc); box-shadow: 0 4px 14px rgb(35 33 29 / .06);
 }
 .tt-cab__marca { height: 46px; width: auto; }
-.tt-cab__div { width: 1px; height: 38px; background: rgb(243 240 234 / .22); }
+.tt-cab__div { width: 1px; height: 38px; background: var(--linha); }
 .tt-cab__sala { display: flex; align-items: center; gap: 14px; }
 .tt-cab__selo {
   width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center;
-  font: 600 18px var(--sans); color: var(--marfim); border: 1.5px solid var(--dourado);
+  font: 600 18px var(--sans); color: var(--branco); border: 1.5px solid var(--dourado);
 }
-.tt-cab__sala small { display: block; font-size: var(--t-micro); line-height: 1.1; letter-spacing: .22em; font-weight: 600; color: var(--dourado-claro); }
+.tt-cab__sala small { display: block; font-size: var(--t-micro); line-height: 1.1; letter-spacing: .22em; font-weight: 600; color: var(--dourado-texto); }
 .tt-cab__sala b { font-size: 26px; font-weight: 600; line-height: 1.1; }
 .tt-cab__percurso {
   margin-left: auto; display: flex; align-items: center; gap: 16px;
-  font-size: var(--t-micro); letter-spacing: .2em; font-weight: 600; color: rgb(243 240 234 / .78);
+  font-size: var(--t-micro); letter-spacing: .2em; font-weight: 600; color: var(--suave);
 }
 .tt-cab__pontos { display: flex; align-items: center; }
 .tt-cab__passo { display: flex; align-items: center; }
@@ -34,9 +35,9 @@
   border: 1.5px solid var(--dourado);
 }
 .tt-cab__passo i.is-feito { background: var(--dourado); }
-.tt-cab__passo i.is-atual { background: var(--dourado); width: 18px; height: 18px; box-shadow: 0 0 0 4px rgb(176 141 87 / .25); }
-.tt-cab__fio { width: 18px; height: 1.5px; background: rgb(176 141 87 / .55); margin: 0 4px; }
-.tt-cab__n { font-size: var(--t-apoio); letter-spacing: .02em; font-weight: 500; color: var(--marfim); }
+.tt-cab__passo i.is-atual { background: var(--dourado); width: 18px; height: 18px; box-shadow: 0 0 0 4px rgb(194 154 69 / .25); }
+.tt-cab__fio { width: 18px; height: 1.5px; background: rgb(194 154 69 / .55); margin: 0 4px; }
+.tt-cab__n { font-size: var(--t-apoio); letter-spacing: .02em; font-weight: 500; color: var(--grafite); }
 
 /* ---------- área principal ---------- */
 .tt-main { flex: 1; min-height: 0; position: relative; padding: 28px 52px 0; }
@@ -59,8 +60,8 @@
   font-size: var(--t-botao); font-weight: 600; color: var(--grafite-2); white-space: nowrap;
   transition: background var(--dur) var(--curva), color var(--dur) var(--curva);
 }
-.tt-aba:active { background: rgb(43 42 40 / .08); }
-.tt-aba.is-ativa { background: var(--rc); color: var(--marfim); box-shadow: 0 4px 12px rgb(43 42 40 / .18); }
+.tt-aba:active { background: rgb(35 33 29 / .08); }
+.tt-aba.is-ativa { background: var(--rc); color: var(--branco); box-shadow: 0 4px 12px rgb(35 33 29 / .18); }
 
 /* ---------- rodapé ---------- */
 .tt-rod {
@@ -68,7 +69,7 @@
   display: flex; align-items: center; gap: 16px;
   padding: 0 52px;
   border-top: 1px solid var(--linha);
-  background: rgb(251 249 245 / .6);
+  background: rgb(255 255 255 / .7);
   font-size: var(--t-apoio); color: var(--suave-2);
 }
 .tt-rod b { color: var(--grafite); font-weight: 600; }

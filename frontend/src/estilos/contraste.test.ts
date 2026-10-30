@@ -28,11 +28,18 @@ const PARES: [string, string, number][] = [
   ['suave', 'marfim', 4.5], ['suave', 'areia', 4.5],
   ['suave-2', 'marfim', 4.5], ['suave-2', 'cartao', 4.5], ['suave-2', 'areia', 4.5],
   ['dourado-texto', 'marfim', 4.5], ['dourado-texto', 'cartao', 4.5], ['dourado-texto', 'areia', 4.5],
-  ['dourado-texto', 'dourado-fundo', 4.5],
+  ['dourado-texto', 'dourado-fundo', 4.5], ['grafite', 'cartao', 4.5],
   ['dourado', 'grafite', 4.5], ['dourado', 'grafite-3', 4.5],
   ['dourado-claro', 'grafite', 4.5], ['dourado-claro', 'grafite-2', 4.5], ['suave-escuro', 'grafite', 4.5],
   ['marfim', 'grafite', 4.5], ['erro', 'marfim', 4.5],
-  ['marfim', 'sala-1', 4.5], ['marfim', 'sala-2', 4.5], ['marfim', 'sala-3', 4.5], ['marfim', 'sala-4', 4.5], ['marfim', 'sala-5', 4.5],
+  // texto sobre a cor do espaço (aba ativa, selo, ano, cartão de marco aberto): sempre branco
+  ['branco', 'sala-1', 4.5], ['branco', 'sala-2', 4.5], ['branco', 'sala-3', 4.5],
+  ['branco', 'sala-4', 4.5], ['branco', 'sala-5', 4.5], ['branco', 'sala-6', 4.5],
+  // a cor do espaço como texto (período ativo, atalhos, "Toque para ler mais") sobre o cartão branco
+  ['sala-1', 'cartao', 4.5], ['sala-2', 'cartao', 4.5], ['sala-3', 'cartao', 4.5],
+  ['sala-4', 'cartao', 4.5], ['sala-5', 'cartao', 4.5], ['sala-6', 'cartao', 4.5],
+  // cartão dourado do perfil (degradê de dourado-claro a dourado)
+  ['grafite', 'dourado', 4.5], ['grafite-2', 'dourado', 4.5],
 ];
 
 describe('contraste dos tokens', () => {
@@ -42,6 +49,10 @@ describe('contraste dos tokens', () => {
 
   it('dourado puro sobre fundo claro fica só para ornamento (abaixo de 3:1)', () => {
     expect(contraste(token('dourado'), token('marfim'))).toBeLessThan(3);
+  });
+
+  it('o branco gelo (marfim) não sustenta texto sobre a cor Esporte: por isso o texto sobre os espaços é branco', () => {
+    expect(contraste(token('marfim'), token('sala-5'))).toBeLessThan(4.5);
   });
 
 });

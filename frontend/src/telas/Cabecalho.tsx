@@ -1,8 +1,9 @@
 /**
- * Cabeçalho de todos os totens: assinatura, selo da sala e o percurso.
+ * Cabeçalho de todos os totens (branco, com a borda inferior na cor do espaço): assinatura dourada,
+ * selo da sala e o percurso.
  * Em produção os pontos do percurso são só indicadores (cada totem conhece apenas a própria sala).
  */
-import assinatura from '../assets/memorial/assinatura.png';
+import assinatura from '../assets/memorial/assinatura-dourada.png';
 import { TOTAL_SALAS } from '../config/sala';
 import { dois } from '../dados/salas';
 import type { Sala } from '../dados/tipos';

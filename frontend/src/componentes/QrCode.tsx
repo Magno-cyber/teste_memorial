@@ -27,7 +27,7 @@ export function QrCode({ texto, tamanho = 320, rotulo }: { texto: string; tamanh
       aria-label={rotulo}
     >
       <rect x={-margem} y={-margem} width={n + 2 * margem} height={n + 2 * margem} fill="#fff" />
-      <path d={d} fill="#2B2A28" />
+      <path d={d} fill="#23211D" />
     </svg>
   );
 }
