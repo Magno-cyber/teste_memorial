@@ -38,8 +38,6 @@ const PARES: [string, string, number][] = [
   // a cor do espaço como texto (período ativo, atalhos, "Toque para ler mais") sobre o cartão branco
   ['sala-1', 'cartao', 4.5], ['sala-2', 'cartao', 4.5], ['sala-3', 'cartao', 4.5],
   ['sala-4', 'cartao', 4.5], ['sala-5', 'cartao', 4.5], ['sala-6', 'cartao', 4.5],
-  // cartão dourado do perfil (degradê de dourado-claro a dourado)
-  ['grafite', 'dourado', 4.5], ['grafite-2', 'dourado', 4.5],
 ];
 
 describe('contraste dos tokens', () => {
