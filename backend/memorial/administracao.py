@@ -1,40 +1,146 @@
-"""Painel da administração (/administracao/): todas as entradas e saídas do sistema, só para leitura.
+"""Painel da administração (/administracao/): aprovação de fotos e cadastros, e as entradas e saídas.
+
+Os cadastros (salas, marcos, fotos...) ficam em gestao.py.
 
 Fora das salas e do service worker do totem. Usa o login do admin do Django: precisa de usuário da
-equipe (is_staff) com a permissão memorial.view_registro (o grupo "Administrativo" já a tem).
+equipe (is_staff) com as permissões de cada tela (o grupo "Administrativo" já tem todas).
 """
 
 import csv
 from datetime import date
 from functools import wraps
 
+from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
-from django.http import HttpResponse, HttpResponseForbidden
-from django.shortcuts import render
+from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
+from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_POST
 
-from .models import Aluno, FotoAluno, Registro, normalizar
-from .registro import registrar
+from .models import Aluno, ConfiguracaoMemorial, FotoAluno, Registro, normalizar
+from .notificacoes import email_configurado
+from .registro import alterar_em_lote, registrar
+from .secoes import menu
 
 POR_PAGINA = 50
+FILA_MAXIMA = 60  # itens por tela de aprovação, os mais antigos primeiro; os seguintes entram ao decidir estes
+VER_REGISTRO = "memorial.view_registro"
+APROVAR_FOTOS = "memorial.change_fotoaluno"
+APROVAR_CADASTROS = "memorial.change_aluno"
 
 
-def _exige_acesso(view):
-    @wraps(view)
-    def interna(request, *args, **kwargs):
-        if not request.user.has_perm("memorial.view_registro"):
-            return HttpResponseForbidden(
-                "Seu usuário não tem acesso às entradas e saídas. Peça à equipe para incluí-lo no grupo Administrativo.",
-                content_type="text/plain; charset=utf-8",
-            )
-        return view(request, *args, **kwargs)
+def _exige(*permissoes):
+    """Usuário da equipe com ao menos uma das permissões."""
 
-    return require_GET(never_cache(staff_member_required(interna)))
+    def decorador(view):
+        @wraps(view)
+        def interna(request, *args, **kwargs):
+            if not any(request.user.has_perm(p) for p in permissoes):
+                return HttpResponseForbidden(
+                    "Seu usuário não tem acesso a esta tela. Peça à equipe para incluí-lo no grupo Administrativo.",
+                    content_type="text/plain; charset=utf-8",
+                )
+            return view(request, *args, **kwargs)
 
+        return never_cache(staff_member_required(interna))
+
+    return decorador
+
+
+def _fotos_pendentes():
+    return FotoAluno.objects.filter(status=FotoAluno.Status.PENDENTE, aluno__demonstrativo=False)
+
+
+def _cadastros_pendentes():
+    return Aluno.objects.filter(status=Aluno.Status.PENDENTE, demonstrativo=False)
+
+
+def _contagem_pendencias(user):
+    fotos = _fotos_pendentes().count() if user.has_perm(APROVAR_FOTOS) else 0
+    cadastros = _cadastros_pendentes().count() if user.has_perm(APROVAR_CADASTROS) else 0
+    return {"fotos": fotos, "cadastros": cadastros, "total": fotos + cadastros}
+
+
+def contexto_base(request, tela):
+    return {
+        "tela": tela,
+        "pendentes": _contagem_pendencias(request.user),
+        "pode_aprovar": request.user.has_perm(APROVAR_FOTOS) or request.user.has_perm(APROVAR_CADASTROS),
+        "pode_registro": request.user.has_perm(VER_REGISTRO),
+        "menu": menu(request),
+    }
+
+
+# ---------------------------------------------------------------- aprovações
+
+@require_GET
+@_exige(APROVAR_FOTOS, APROVAR_CADASTROS, VER_REGISTRO)
+def aprovacoes(request):
+    if not (request.user.has_perm(APROVAR_FOTOS) or request.user.has_perm(APROVAR_CADASTROS)):
+        return redirect("administracao_registro")
+    pode_fotos = request.user.has_perm(APROVAR_FOTOS)
+    pode_cadastros = request.user.has_perm(APROVAR_CADASTROS)
+    return render(request, "memorial/administracao_aprovacoes.html", {
+        **contexto_base(request, "aprovacoes"),
+        "pode_fotos": pode_fotos,
+        "pode_cadastros": pode_cadastros,
+        "fotos": _fotos_pendentes().select_related("aluno").order_by("criado_em", "id")[:FILA_MAXIMA] if pode_fotos else [],
+        "cadastros": _cadastros_pendentes().annotate(
+            qtd_fotos=Count("fotos", filter=Q(fotos__status=FotoAluno.Status.PENDENTE)),
+        ).order_by("checkin_em", "id")[:FILA_MAXIMA] if pode_cadastros else [],
+        "fila_maxima": FILA_MAXIMA,
+        "aprovar_perfis": ConfiguracaoMemorial.atual().aprovar_perfis,
+        "pode_configurar": request.user.has_perm("memorial.change_configuracaomemorial"),
+        "email_configurado": email_configurado(),
+    })
+
+
+def _decidir(request, pendentes, acoes):
+    """Só mexe no que ainda está pendente: outra pessoa da equipe pode ter decidido antes."""
+    acao = acoes.get(request.POST.get("acao"))
+    ids = [i for i in request.POST.getlist("selecionados") if i.isdecimal()]
+    if not acao:
+        messages.error(request, "Ação desconhecida. Nada foi alterado.")
+    elif not ids:
+        messages.warning(request, "Selecione ao menos um item antes de aprovar ou recusar.")
+    else:
+        rotulo, status, resumo = acao
+        n = alterar_em_lote(pendentes.filter(pk__in=ids), rotulo, status=status)
+        messages.success(request, f"{n} {resumo}.")
+        if n < len(set(ids)):
+            messages.warning(request, f"{len(set(ids)) - n} já tinha(m) sido decidido(s) por outra pessoa da equipe.")
+    return redirect("administracao")
+
+
+@require_POST
+@_exige(APROVAR_FOTOS)
+def decidir_fotos(request):
+    return _decidir(request, _fotos_pendentes(), {
+        "aprovar": ("Foto aprovada", FotoAluno.Status.APROVADA, "foto(s) aprovada(s): já aparecem no perfil"),
+        "recusar": ("Foto recusada", FotoAluno.Status.RECUSADA, "foto(s) recusada(s): não aparecem nos totens"),
+    })
+
+
+@require_POST
+@_exige(APROVAR_CADASTROS)
+def decidir_cadastros(request):
+    return _decidir(request, _cadastros_pendentes(), {
+        "aprovar": ("Perfil aprovado", Aluno.Status.APROVADO, "cadastro(s) aprovado(s): já aparecem na Sala 06"),
+        "ocultar": ("Perfil oculto", Aluno.Status.OCULTO, "cadastro(s) oculto(s): não aparecem na Sala 06"),
+    })
+
+
+@require_GET
+@_exige(APROVAR_FOTOS, APROVAR_CADASTROS, VER_REGISTRO)
+def pendencias(request):
+    """Consultado pelo painel aberto, para avisar quando chega algo novo."""
+    return JsonResponse(_contagem_pendencias(request.user))
+
+
+# ---------------------------------------------------------------- entradas e saídas
 
 def _data(valor):
     try:
@@ -75,8 +181,9 @@ def _aplicar(f):
     return qs.filter(direcao=f["direcao"]) if f["direcao"] else qs
 
 
-@_exige_acesso
-def painel(request):
+@require_GET
+@_exige(VER_REGISTRO)
+def registro(request):
     f = _ler_filtros(request.GET)
     contagem = _sem_direcao(f).aggregate(
         todas=Count("id"),
@@ -88,14 +195,12 @@ def painel(request):
         saidas=Count("id", filter=Q(direcao=Registro.Direcao.SAIDA)),
     )
     pagina = Paginator(_aplicar(f), POR_PAGINA).get_page(request.GET.get("pagina"))
-    return render(request, "memorial/administracao.html", {
+    return render(request, "memorial/administracao_registro.html", {
+        **contexto_base(request, "registro"),
         "filtros": f,
         "contagem": contagem,
         "hoje": hoje,
         "checkins": Aluno.objects.filter(origem=Aluno.Origem.CHECKIN, demonstrativo=False).count(),
-        "fotos_pendentes": FotoAluno.objects.filter(status=FotoAluno.Status.PENDENTE, aluno__demonstrativo=False).count(),
-        "perfis_pendentes": Aluno.objects.filter(status=Aluno.Status.PENDENTE, demonstrativo=False).count(),
-        "pode_moderar": request.user.has_perm("memorial.change_fotoaluno"),
         "pagina": pagina,
         "tipos": Registro.Tipo.choices,
         "tem_filtro": any(f.values()),
@@ -108,7 +213,8 @@ def _celula(valor):
     return f"'{texto}" if texto[:1] in ("=", "+", "-", "@", "\t", "\r") else texto
 
 
-@_exige_acesso
+@require_GET
+@_exige(VER_REGISTRO)
 def exportar(request):
     f = _ler_filtros(request.GET)
     registros = _aplicar(f)

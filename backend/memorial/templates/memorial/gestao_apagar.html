@@ -1,0 +1,21 @@
+{% extends "memorial/administracao_base.html" %}
+{% block titulo %}Apagar {{ secao.rotulo|lower }}{% endblock %}
+{% block corpo %}
+<p class="trilha"><a href="{% url 'gestao_lista' secao.slug %}">{{ secao.rotulo }}</a></p>
+<h1>Apagar {{ objetos|length }} {{ objetos|length|pluralize:"item,itens" }}?</h1>
+<p class="intro">Não dá para desfazer. Os arquivos ligados a estes itens também saem do servidor.</p>
+<ul class="lista-apagar">{% for o in objetos|slice:":20" %}<li>{{ o }}</li>{% endfor %}{% if objetos|length > 20 %}<li>e mais {{ objetos|length|add:"-20" }}</li>{% endif %}</ul>
+<h2>O que será apagado no total</h2>
+<ul class="lista-apagar">{% for nome, n in contagem %}<li>{{ n }} · {{ nome }}</li>{% endfor %}</ul>
+{% if bloqueado %}
+  <p class="mensagem mensagem--error">Seu usuário não pode apagar tudo isso, ou algum item está em uso. Nada foi apagado.</p>
+  <a class="botao" href="{% url 'gestao_lista' secao.slug %}">Voltar</a>
+{% else %}
+  <form method="post" class="barra-salvar">
+    {% csrf_token %}
+    {% for o in objetos %}<input type="hidden" name="selecionados" value="{{ o.pk }}">{% endfor %}
+    <button class="botao botao--recusa" name="confirmar" value="1">Apagar definitivamente</button>
+    <a class="botao" href="{% url 'gestao_lista' secao.slug %}">Cancelar</a>
+  </form>
+{% endif %}
+{% endblock %}

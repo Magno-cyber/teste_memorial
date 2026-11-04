@@ -37,7 +37,7 @@ docker compose exec backend python manage.py carregar_exemplo   # opcional: cont
 - Totens: `http://<servidor>:8080/?sala=1` … `?sala=6`
 - Check-in: `http://<servidor>:8080/checkin` (é o endereço do QR Code)
 - Admin: `http://<servidor>:8080/admin` (usuário do `.env`)
-- Painel da administração: `http://<servidor>:8080/administracao/` (entradas e saídas, ver abaixo)
+- Painel da administração: `http://<servidor>:8080/administracao/` (aprovações e entradas e saídas, ver abaixo)
 
 ### Configurar cada totem
 
@@ -79,28 +79,62 @@ do totem mostra "Conteúdo de exemplo" enquanto a sala tiver algum item assim.
 | **Vídeos** | arquivo, capa (automática se vazia), tipo, **destaque** (um por sala), legenda WebVTT opcional |
 | **Ex-alunos** | filtros por status e ano; ações **Aprovar** e **Ocultar**; o e-mail só aparece aqui |
 | **Fotos de ex-alunos** | chegam pelo check-in como *pendentes*; aprove ou recuse em lote |
-| **Entradas e saídas** | o registro do sistema, só leitura; o painel completo fica em `/administracao/` |
+| **Entradas e saídas** | o registro do sistema, só leitura; aprovações e o registro completo ficam em `/administracao/` |
 | **Configuração do memorial** | tempos dos totens, som dos vídeos, aprovação de perfis, termo de consentimento, QR Code |
 
 No upload, como antes: fotos viram duas versões JPEG (`exibicao` 2560 px e `miniatura` 480 px, EXIF
 corrigido e removido); vídeos têm duração e codec lidos pelo ffprobe e capa capturada pelo ffmpeg;
 apagar um registro apaga os arquivos do disco.
 
-## Painel da administração: entradas e saídas
+## Painel da administração
 
-`/administracao/` mostra tudo que entrou e saiu do sistema, com busca, filtros por tipo e data, e exportação em CSV.
-É só leitura, e ninguém edita nem apaga os registros (nem pelo `/admin`, em **Entradas e saídas**).
+**Onde acessar:** `http://<servidor>:8080/administracao/`, com o mesmo login do `/admin` (a página inicial do `/admin` também
+tem um botão para ele). Em desenvolvimento sem Docker: `http://localhost:8080/administracao/`.
+
+### Cadastros (`/administracao/gerir/`)
+
+Tudo que se edita no `/admin` também se edita aqui, pela barra lateral: salas, apresentações, décadas, marcos, fotos, vídeos, ex-alunos,
+fotos de ex-alunos e configuração. Tem os mesmos campos, filtros, busca, ações em lote e permissões, em cartões com foto ou ícone, com seletor de cor
+e de ícone. A página de uma sala reúne a apresentação, as décadas, os marcos e os vídeos dela. Apagar sempre mostra antes o que será removido.
+
+As telas leem as definições de `backend/memorial/admin.py`: um campo novo lá aparece aqui sem outra mudança. Um **modelo** novo precisa entrar em
+`backend/memorial/secoes.py` (um teste avisa se faltar). A única diferença: alterar `publicado` ou `status` direto na lista não existe aqui; use as ações em lote
+ou a página do item.
+
+### Aprovações (`/administracao/`)
+
+Toda foto enviada no check-in entra como *pendente* e só aparece nos totens depois de aprovada. Aqui a equipe vê as fotos e os
+cadastros pendentes, marca os que quiser (ou **Selecionar todas**) e aprova, recusa ou oculta de uma vez. **Ampliar** mostra a foto
+em tamanho maior. Cada decisão fica nas entradas e saídas, com quem decidiu, e pode ser refeita no `/admin`.
+
+**Cadastros pendentes** só existem com **Aprovar perfis antes de aparecer** ligado em Configuração do memorial. Desligado (o padrão),
+o perfil aparece na Sala 06 logo depois do check-in, e a tela avisa isso. As fotos passam por aprovação nos dois casos.
+
+**Como a equipe é avisada:**
+
+- com o painel aberto: número no menu e no título da aba, e uma faixa "Chegou 1 item novo" (consulta a cada 30 s, sem recarregar a tela
+  nem perder a seleção);
+- por e-mail, com as fotos em anexo e o link do painel, a cada check-in que deixar algo pendente. Vai para os superusuários e o grupo
+  **Administrativo**, no e-mail de cada usuário. Só funciona com `EMAIL_HOST` configurado no `.env` (ver `.env.example`); sem ele, nada é enviado.
+
+### Entradas e saídas (`/administracao/registro/`)
+
+Tudo que entrou e saiu do sistema, com busca, filtros por tipo e data, e exportação em CSV. Ninguém edita nem apaga os registros
+(nem pelo `/admin`, em **Entradas e saídas**).
 
 | Direção | O que conta |
 |---|---|
-| Entrada | check-in novo ou atualizado, foto enviada, cadastro criado ou alterado (com quem fez), login da equipe, login recusado |
-| Saída | cadastro removido, ex-aluno removido, exportação de dados, logout da equipe |
-
-**Dar acesso a alguém:** em Admin › Usuários, crie o usuário, marque **Membro da equipe** e inclua no grupo
-**Administrativo** (criado sozinho pelas migrações; só permite ver o registro, não alterar conteúdo). O login é o do admin.
+| Entrada | check-in novo ou atualizado, foto enviada, cadastro criado ou alterado (com quem fez), aprovações, login da equipe, login recusado |
+| Saída | cadastro removido, ex-aluno removido, exportação de dados, aviso por e-mail, logout da equipe |
 
 **Limites:** o conteúdo de exemplo (`carregar_exemplo`) não entra no registro. Do que aconteceu antes da migração `0012`, só
 check-ins e fotos foram trazidos. Não existe check-out de visitantes: a saída de uma pessoa do prédio não é registrada.
+
+### Dar acesso a alguém
+
+Em Admin › Usuários, crie o usuário, marque **Membro da equipe**, preencha o **e-mail** (para receber os avisos) e inclua no grupo
+**Administrativo**, criado sozinho pelas migrações. O grupo aprova fotos e cadastros, edita ex-alunos e vê as entradas e saídas; não altera o conteúdo das
+salas, e o menu do painel mostra só o que cada usuário pode acessar. Para liberar mais, dê as permissões do modelo no usuário ou no grupo.
 
 ## API (`/api/memorial/`)
 
@@ -127,7 +161,8 @@ Os dados da Sala 06 (aba Colegas) são de pessoas reais:
 - o **e-mail nunca sai do servidor** (nenhuma resposta da API o contém; há teste para isso);
 - o perfil só aparece com **consentimento** e status *aprovado* (com **aprovar perfis** ligado no admin,
   todo check-in entra como *pendente*);
-- **fotos enviadas só aparecem depois de aprovadas** pela equipe;
+- **fotos enviadas só aparecem depois de aprovadas** pela equipe. O aviso por e-mail, se configurado, leva a miniatura da foto, nome, ano e
+  turma à caixa de e-mail da equipe, nunca o e-mail do visitante; essas cópias não somem do e-mail quando o ex-aluno é removido;
 - **remoção**: apagar o ex-aluno no admin apaga o perfil, a foto e as fotos enviadas (arquivos inclusos).
   Os totens deixam de mostrar a pessoa na hora; as fotos guardadas no cache do totem expiram em até 1 dia.
   O nome também sai do registro de entradas e saídas, que fica só com "Ex-aluno nº N (dados pessoais removidos)";

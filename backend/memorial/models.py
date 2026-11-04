@@ -508,6 +508,7 @@ class Registro(models.Model):
         CADASTRO_REMOVIDO = "cadastro_removido", "Cadastro removido"
         ALUNO_REMOVIDO = "aluno_removido", "Ex-aluno removido"
         EXPORTACAO = "exportacao", "Exportação de dados"
+        AVISO_EMAIL = "aviso_email", "Aviso por e-mail"
         LOGOUT = "logout", "Logout da equipe"
 
     em = models.DateTimeField("data e hora", default=timezone.now, db_index=True)

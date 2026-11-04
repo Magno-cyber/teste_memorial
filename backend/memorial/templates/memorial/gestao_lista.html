@@ -1,0 +1,109 @@
+{% extends "memorial/administracao_base.html" %}
+{% block titulo %}{{ secao.rotulo }}{% endblock %}
+{% block corpo %}
+<div class="cabeca">
+  <h1>{{ secao.rotulo }}</h1>
+  {% if pode_adicionar %}<a class="botao botao--forte" href="{% url 'gestao_novo' secao.slug %}">Adicionar {{ secao.singular }}</a>{% endif %}
+</div>
+
+{% if tem_busca or filtros %}
+  <form class="filtros filtros--lista" method="get" role="search">
+    {% if tem_busca %}
+      <div class="campo campo--busca">
+        <label for="f-q">Buscar</label>
+        <input id="f-q" type="search" name="q" value="{{ busca }}">
+      </div>
+    {% endif %}
+    {% for f in filtros %}
+      <div class="campo">
+        <label for="f-{{ f.nome }}">{{ f.rotulo }}</label>
+        <select id="f-{{ f.nome }}" name="{{ f.nome }}">
+          <option value="">Todos</option>
+          {% for valor, rotulo in f.opcoes %}<option value="{{ valor }}"{% if valor == f.atual %} selected{% endif %}>{{ rotulo }}</option>{% endfor %}
+        </select>
+      </div>
+    {% endfor %}
+    <div class="filtros__botoes">
+      <button type="submit" class="botao">Filtrar</button>
+      {% if tem_filtro %}<a class="botao" href="{% url 'gestao_lista' secao.slug %}">Limpar</a>{% endif %}
+    </div>
+  </form>
+{% endif %}
+
+{% if linhas %}
+<form method="post" {% if com_selecao %}data-selecao{% endif %}>
+  {% csrf_token %}
+  {% if com_selecao %}
+    <div class="selecao">
+      <label class="selecao__todas"><input type="checkbox" data-todas> Selecionar todos</label>
+      <span class="selecao__qtd num" data-qtd aria-live="polite"></span>
+      <div class="selecao__botoes">
+        {% for nome, descricao in acoes %}<button class="botao" name="acao" value="{{ nome }}" data-exige-selecao>{{ descricao }}</button>{% endfor %}
+        {% if pode_apagar %}<button class="botao botao--recusa" formaction="{% url 'gestao_apagar' secao.slug %}" data-exige-selecao>Apagar</button>{% endif %}
+      </div>
+    </div>
+  {% endif %}
+
+  {% if secao.layout == 'grade' %}
+    <ul class="cartoes">
+      {% for l in linhas %}
+        <li class="cartao"{% if l.cor %} style="--cor-sala:{{ l.cor }}"{% endif %}>
+          {% if com_selecao %}<input class="cartao__marca" type="checkbox" name="selecionados" value="{{ l.obj.pk }}" aria-label="Selecionar {{ l.titulo }}">{% endif %}
+          <a class="cartao__capa{% if l.cor %} cartao__capa--sala{% endif %}" href="{{ l.url }}" tabindex="-1" aria-hidden="true">
+            {% if l.imagem %}<img src="{{ l.imagem }}" alt="" loading="lazy">
+            {% elif l.cor %}<span class="cartao__numero">{{ l.numero|stringformat:"02d" }}</span>
+            {% else %}<svg width="48" height="48" aria-hidden="true"><use href="#i-{{ l.icone }}"/></svg>{% endif %}
+          </a>
+          <div class="cartao__corpo">
+            <a class="cartao__titulo" href="{{ l.url }}">{{ l.titulo }}</a>
+            <dl>
+              {% for c in l.celulas %}
+                <div><dt>{{ c.rotulo }}</dt><dd>{% if c.booleano is not None %}<span class="chip{% if c.booleano %} chip--sim{% endif %}">{{ c.valor }}</span>{% else %}{{ c.valor }}{% endif %}</dd></div>
+              {% endfor %}
+            </dl>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="tabela">
+      <table>
+        <thead>
+          <tr>
+            {% if com_selecao %}<th scope="col"><span class="oculto-visual">Selecionar</span></th>{% endif %}
+            <th scope="col"><span class="oculto-visual">Imagem</span></th>
+            {% for nome, rotulo in colunas %}<th scope="col">{{ rotulo }}</th>{% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for l in linhas %}
+            <tr>
+              {% if com_selecao %}<td data-rotulo="Selecionar"><input type="checkbox" name="selecionados" value="{{ l.obj.pk }}" aria-label="Selecionar {{ l.titulo }}"></td>{% endif %}
+              <td class="celula-img" data-rotulo="Imagem">
+                {% if l.imagem %}<img src="{{ l.imagem }}" alt="" loading="lazy">{% else %}<svg width="28" height="28" aria-hidden="true"><use href="#i-{{ l.icone }}"/></svg>{% endif %}
+              </td>
+              {% for c in l.celulas %}
+                <td data-rotulo="{{ c.rotulo }}">
+                  {% if forloop.first %}<a href="{{ l.url }}">{{ c.valor }}</a>
+                  {% elif c.booleano is not None %}<span class="chip{% if c.booleano %} chip--sim{% endif %}">{{ c.valor }}</span>
+                  {% else %}{{ c.valor }}{% endif %}
+                </td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+</form>
+<nav class="paginacao" aria-label="Páginas">
+  {% if pagina.has_previous %}<a class="botao" href="{% querystring pagina=pagina.previous_page_number %}">Anterior</a>{% endif %}
+  <span class="num">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }} · {{ pagina.paginator.count }} no total</span>
+  {% if pagina.has_next %}<a class="botao" href="{% querystring pagina=pagina.next_page_number %}">Próxima</a>{% endif %}
+</nav>
+{% elif tem_filtro %}
+  <div class="vazio"><p>Nada encontrado com estes filtros.</p><a class="botao" href="{% url 'gestao_lista' secao.slug %}">Limpar os filtros</a></div>
+{% else %}
+  <div class="vazio"><p>Ainda não há nada cadastrado aqui.</p>{% if pode_adicionar %}<a class="botao botao--forte" href="{% url 'gestao_novo' secao.slug %}">Adicionar {{ secao.singular }}</a>{% endif %}</div>
+{% endif %}
+{% endblock %}

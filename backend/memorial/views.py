@@ -10,6 +10,7 @@ from datetime import timedelta
 
 from django.db.models import Case, Count, DateTimeField, F, Max, When
 from django.shortcuts import get_object_or_404
+from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, parser_classes, throttle_classes
@@ -210,5 +211,5 @@ def checkin(request):
     except ImagemInvalida as exc:
         return Response({"erros": {"fotos": str(exc)}}, status=status.HTTP_400_BAD_REQUEST)
 
-    registrar_checkin(entrada.validated_data, imagens, config)
+    registrar_checkin(entrada.validated_data, imagens, config, request.build_absolute_uri(reverse("administracao")))
     return Response({"ok": True}, status=status.HTTP_201_CREATED)

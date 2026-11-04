@@ -1,0 +1,59 @@
+{% extends "memorial/administracao_base.html" %}
+{% block titulo %}{% if obj %}{{ obj }}{% else %}Adicionar {{ secao.singular }}{% endif %}{% endblock %}
+{% block corpo %}
+{% if not e_unico %}<p class="trilha"><a href="{% url 'gestao_lista' secao.slug %}">{{ secao.rotulo }}</a></p>{% endif %}
+<div class="cabeca">
+  <h1>{% if e_unico %}{{ secao.rotulo }}{% elif obj %}{{ obj }}{% else %}Adicionar {{ secao.singular }}{% endif %}</h1>
+</div>
+{% if not pode_salvar %}<p class="nota nota--destaque">Seu usuário pode ver estes dados, mas não alterá-los.</p>{% endif %}
+
+<form method="post" enctype="multipart/form-data" class="formulario" novalidate>
+  {% csrf_token %}
+  {% if com_erros %}<p class="mensagem mensagem--error" role="alert">Nada foi salvo. Corrija os campos marcados abaixo e salve de novo.</p>{% endif %}
+  {% for e in form.non_field_errors %}<p class="erro-campo">{{ e }}</p>{% endfor %}
+  {% for h in form.hidden_fields %}{{ h }}{% endfor %}
+  <div class="painel-form">{% include "memorial/_campos.html" with blocos=blocos %}</div>
+
+  {% for grupo in inlines %}
+    <section class="grupo-inline" data-inline="{{ grupo.prefixo }}">
+      <h2>{{ grupo.titulo }} <span class="contagem">{{ grupo.formset.initial_form_count }}</span></h2>
+      {{ grupo.formset.management_form }}
+      {% for e in grupo.formset.non_form_errors %}<p class="erro-campo">{{ e }}</p>{% endfor %}
+      <div class="itens-inline" data-itens>
+        {% for item in grupo.itens %}
+          <details class="item-inline"{% if item.novo or item.form.errors %} open{% endif %}>
+            <summary>{{ item.resumo }}</summary>
+            <div class="item-inline__corpo">
+              {% for h in item.form.hidden_fields %}{% if h.name != 'DELETE' %}{{ h }}{% endif %}{% endfor %}
+              {% for e in item.form.non_field_errors %}<p class="erro-campo">{{ e }}</p>{% endfor %}
+              {% include "memorial/_campos.html" with blocos=item.blocos %}
+              {% if grupo.formset.can_delete and not item.novo %}<label class="apagar-inline">{{ item.form.DELETE }} Apagar ao salvar</label>{% endif %}
+            </div>
+          </details>
+        {% endfor %}
+      </div>
+      {% if grupo.pode_adicionar %}
+        <template data-modelo>
+          <details class="item-inline" open>
+            <summary>Novo</summary>
+            <div class="item-inline__corpo">
+              {% for h in grupo.modelo_vazio.form.hidden_fields %}{% if h.name != 'DELETE' %}{{ h }}{% endif %}{% endfor %}
+              {% include "memorial/_campos.html" with blocos=grupo.modelo_vazio.blocos %}
+            </div>
+          </details>
+        </template>
+        <button type="button" class="botao" data-adicionar>Adicionar {{ grupo.singular }}</button>
+      {% endif %}
+    </section>
+  {% endfor %}
+
+  <div class="barra-salvar">
+    {% if pode_salvar %}
+      <button type="submit" class="botao botao--forte">Salvar</button>
+      {% if not e_unico %}<button type="submit" class="botao" name="_continuar" value="1">Salvar e continuar aqui</button>{% endif %}
+    {% endif %}
+    {% if not e_unico %}<a class="botao" href="{% url 'gestao_lista' secao.slug %}">Voltar</a>{% endif %}
+    {% if pode_apagar %}<button type="submit" class="botao botao--recusa barra-salvar__apagar" formaction="{% url 'gestao_apagar' secao.slug %}" formnovalidate name="selecionados" value="{{ obj.pk }}">Apagar</button>{% endif %}
+  </div>
+</form>
+{% endblock %}

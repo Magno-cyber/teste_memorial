@@ -1,7 +1,7 @@
 """Grava as entradas e saídas do sistema (modelo Registro), mostradas em /administracao/.
 
 Entrada: o que chega ao sistema (check-in, foto enviada, cadastro criado ou alterado, login).
-Saída: o que deixa o sistema (cadastro ou ex-aluno removido, exportação de dados, logout).
+Saída: o que deixa o sistema (cadastro ou ex-aluno removido, exportação de dados, aviso por e-mail, logout).
 
 Privacidade: nada aqui recebe e-mail nem IP. A descrição de um ex-aluno leva nome, ano e turma, e é
 apagada quando ele é removido (signals.py).
@@ -10,10 +10,13 @@ apagada quando ele é removido (signals.py).
 from contextlib import contextmanager
 from contextvars import ContextVar
 
-from .models import Registro, normalizar
+from django.utils import timezone
+
+from .models import Aluno, Registro, normalizar
 
 SAIDAS = {
-    Registro.Tipo.CADASTRO_REMOVIDO, Registro.Tipo.ALUNO_REMOVIDO, Registro.Tipo.EXPORTACAO, Registro.Tipo.LOGOUT,
+    Registro.Tipo.CADASTRO_REMOVIDO, Registro.Tipo.ALUNO_REMOVIDO, Registro.Tipo.EXPORTACAO, Registro.Tipo.AVISO_EMAIL,
+    Registro.Tipo.LOGOUT,
 }
 SISTEMA = "Sistema"
 VISITANTE = "Visitante"
@@ -47,6 +50,19 @@ def registrar(tipo, descricao, *, autor=None, aluno_ref=None, em=None):
         direcao=Registro.Direcao.SAIDA if tipo in SAIDAS else Registro.Direcao.ENTRADA,
         busca=texto_de_busca(descricao, autor), **campos,
     )
+
+
+def alterar_em_lote(qs, acao, **campos):
+    """update() não dispara signals nem o auto_now: o registro e a versão da sala são feitos aqui.
+
+    Sem atualizado_em, o totem não perceberia a mudança (a versão da sala vem dele).
+    """
+    objetos = list(qs)
+    n = qs.update(atualizado_em=timezone.now(), **campos)
+    for obj in objetos:
+        referencia = obj.pk if isinstance(obj, Aluno) else getattr(obj, "aluno_id", None)
+        registrar(Registro.Tipo.CADASTRO_ALTERADO, f"{acao}: {obj}", aluno_ref=referencia)
+    return n
 
 
 @contextmanager

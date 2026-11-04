@@ -16,7 +16,7 @@ celular do visitante pelo QR Code da placa de entrada.
   reencontrar colegas.
 - **Famílias e visitantes**: conhecem a história da escola pelo percurso.
 - **Equipe do Memorial**: cadastra o conteúdo, aprova fotos enviadas e atende pedidos de remoção.
-- **Administrativo da instituição**: acompanha as entradas e saídas do sistema em `/administracao/`, sentado, em computador.
+- **Administrativo da instituição**: aprova fotos e cadastros e acompanha as entradas e saídas em `/administracao/`, sentado, em computador.
 
 Nos totens, todos leem de pé, a 50–80 cm da tela, só com o toque, muitas vezes em grupo e sem
 instrução. No check-in, cada um usa o próprio celular, em pé, na entrada.

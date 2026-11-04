@@ -3,7 +3,10 @@ from django.db.models.signals import post_migrate
 
 
 def _criar_grupo_administrativo(sender, **kwargs):
-    """Grupo pronto para o administrativo: vê as entradas e saídas, sem poder alterar conteúdo."""
+    """Grupo pronto para o administrativo: aprova fotos e cadastros e vê as entradas e saídas.
+
+    Não altera o conteúdo das salas.
+    """
     from django.contrib.auth.models import Group, Permission
     from django.db import connection
 
@@ -11,7 +14,8 @@ def _criar_grupo_administrativo(sender, **kwargs):
         return  # migração parcial, antes das tabelas do auth
 
     grupo, _ = Group.objects.get_or_create(name="Administrativo")
-    grupo.permissions.add(*Permission.objects.filter(content_type__app_label="memorial", codename="view_registro"))
+    codigos = ["view_registro", "view_fotoaluno", "change_fotoaluno", "view_aluno", "change_aluno"]
+    grupo.permissions.add(*Permission.objects.filter(content_type__app_label="memorial", codename__in=codigos))
 
 
 class MemorialConfig(AppConfig):

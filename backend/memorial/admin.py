@@ -10,7 +10,7 @@ from django.utils.html import format_html
 from .models import (
     Acontecimento, Aluno, Apresentacao, ConfiguracaoMemorial, Decada, Foto, FotoAluno, Marco, Registro, Sala, Video,
 )
-from .registro import registrar
+from .registro import alterar_em_lote
 
 CODECS_OK = {"h264", "vp8", "vp9"}
 TIPOS_VIDEO = ["Depoimento", "Documentário", "Acervo", "Institucional"]
@@ -26,19 +26,6 @@ def _duracao(segundos):
     return f"{segundos // 60}:{segundos % 60:02d}" if segundos else "—"
 
 
-def _alterar_em_lote(qs, acao, **campos):
-    """update() não dispara signals nem o auto_now: o registro e a versão da sala são feitos aqui.
-
-    Sem atualizado_em, o totem não perceberia a mudança (a versão da sala vem dele).
-    """
-    objetos = list(qs)
-    n = qs.update(atualizado_em=timezone.now(), **campos)
-    for obj in objetos:
-        referencia = obj.pk if isinstance(obj, Aluno) else getattr(obj, "aluno_id", None)
-        registrar(Registro.Tipo.CADASTRO_ALTERADO, f"{acao}: {obj}", aluno_ref=referencia)
-    return n
-
-
 class ConteudoAdmin(admin.ModelAdmin):
     """Ações comuns ao conteúdo das salas."""
 
@@ -46,15 +33,15 @@ class ConteudoAdmin(admin.ModelAdmin):
 
     @admin.action(description="Publicar no totem")
     def publicar(self, request, qs):
-        _alterar_em_lote(qs, "Publicado no totem", publicado=True)
+        alterar_em_lote(qs, "Publicado no totem", publicado=True)
 
     @admin.action(description="Tirar do totem")
     def despublicar(self, request, qs):
-        _alterar_em_lote(qs, "Tirado do totem", publicado=False)
+        alterar_em_lote(qs, "Tirado do totem", publicado=False)
 
     @admin.action(description="Marcar como conteúdo oficial (não é exemplo)")
     def marcar_oficial(self, request, qs):
-        _alterar_em_lote(qs, "Marcado como oficial", demonstrativo=False)
+        alterar_em_lote(qs, "Marcado como oficial", demonstrativo=False)
 
 
 class ListaSugestoes(forms.TextInput):
@@ -384,12 +371,12 @@ class AlunoAdmin(admin.ModelAdmin):
 
     @admin.action(description="Aprovar (aparece na Sala 06)")
     def aprovar(self, request, qs):
-        n = _alterar_em_lote(qs, "Perfil aprovado", status=Aluno.Status.APROVADO)
+        n = alterar_em_lote(qs, "Perfil aprovado", status=Aluno.Status.APROVADO)
         messages.success(request, f"{n} perfil(is) aprovado(s).")
 
     @admin.action(description="Ocultar da Sala 06")
     def ocultar(self, request, qs):
-        n = _alterar_em_lote(qs, "Perfil oculto", status=Aluno.Status.OCULTO)
+        n = alterar_em_lote(qs, "Perfil oculto", status=Aluno.Status.OCULTO)
         messages.success(request, f"{n} perfil(is) oculto(s).")
 
     def save_model(self, request, obj, form, change):
@@ -422,16 +409,19 @@ class FotoAlunoAdmin(admin.ModelAdmin):
 
     @admin.action(description="Aprovar (aparece no perfil)")
     def aprovar(self, request, qs):
-        n = _alterar_em_lote(qs, "Foto aprovada", status=FotoAluno.Status.APROVADA)
+        n = alterar_em_lote(qs, "Foto aprovada", status=FotoAluno.Status.APROVADA)
         messages.success(request, f"{n} foto(s) aprovada(s).")
 
     @admin.action(description="Recusar")
     def recusar(self, request, qs):
-        n = _alterar_em_lote(qs, "Foto recusada", status=FotoAluno.Status.RECUSADA)
+        n = alterar_em_lote(qs, "Foto recusada", status=FotoAluno.Status.RECUSADA)
         messages.success(request, f"{n} foto(s) recusada(s).")
 
 
 # ---------------------------------------------------------------- entradas e saídas
+
+admin.site.index_template = "admin/memorial/index.html"
+
 
 @admin.register(Registro)
 class RegistroAdmin(admin.ModelAdmin):

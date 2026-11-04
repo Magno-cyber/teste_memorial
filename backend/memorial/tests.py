@@ -4,26 +4,37 @@
 """
 
 import json
+import os
 import shutil
 import tempfile
 from datetime import timedelta
 from io import BytesIO
 
-from django.contrib.auth.models import Group, User
+from unittest import mock
+
+from pathlib import Path
+
+from django.contrib import admin
+from django.contrib.admin.models import LogEntry
+from django.contrib.admin.utils import flatten_fieldsets
+from django.contrib.auth.models import Group, Permission, User
+from django.core import mail
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
-from django.test import TestCase, override_settings
+from django.test import Client, TestCase, override_settings
 from django.utils import timezone
 from PIL import Image
 
 from .registro import registrar
 
 from .administracao import _celula
+from .templatetags.painel import estatico
 from .models import (
-    Acontecimento, Aluno, Apresentacao, ConfiguracaoMemorial, Decada, Foto, FotoAluno, Marco, Registro, Sala, Video,
+    Acontecimento, Aluno, Apresentacao, ConfiguracaoMemorial, Decada, Foto, FotoAluno, Icone, Marco, Registro, Sala, Video,
     chave_turma, normalizar,
 )
+from .secoes import SECOES
 
 from django.conf import settings
 
@@ -408,7 +419,8 @@ class SeisEspacosTests(Base):
 
 @override_settings(MEDIA_ROOT=MEDIA, CACHES=CACHE, REST_FRAMEWORK=limites("1000/min"))
 class RegistroTests(Base):
-    URL = "/administracao/"
+    URL = "/administracao/registro/"
+    CSV = "/administracao/exportar.csv"
 
     def setUp(self):
         super().setUp()
@@ -482,7 +494,7 @@ class RegistroTests(Base):
         equipe = User.objects.create_user("equipe", password="senha-longa-1", is_staff=True)
         self.client.force_login(equipe)
         self.assertEqual(self.client.get(self.URL).status_code, 403)  # é da equipe, sem a permissão
-        self.assertEqual(self.client.get(self.URL + "exportar.csv").status_code, 403)
+        self.assertEqual(self.client.get(self.CSV).status_code, 403)
         equipe.groups.add(Group.objects.get(name="Administrativo"))
         equipe = User.objects.get(pk=equipe.pk)
         self.client.force_login(equipe)
@@ -511,7 +523,7 @@ class RegistroTests(Base):
     def test_exportar_csv_fica_registrado_e_neutraliza_formula(self):
         registrar(Registro.Tipo.CHECKIN_NOVO, "=HYPERLINK(1)", autor="Visitante")
         self.client.force_login(self.chefe)
-        r = self.client.get(self.URL + "exportar.csv", {"tipo": "checkin_novo"})
+        r = self.client.get(self.CSV, {"tipo": "checkin_novo"})
         corpo = r.content.decode("utf-8-sig")
         self.assertEqual(r["Content-Type"], "text/csv; charset=utf-8")
         self.assertIn("'=HYPERLINK(1)", corpo)
@@ -529,6 +541,336 @@ class RegistroTests(Base):
         self.assertEqual(self.client.get(base + "add/").status_code, 403)
         self.assertEqual(self.client.post(f"{base}{registro.pk}/delete/", {"post": "yes"}).status_code, 403)
         self.assertEqual(self.client.post(f"{base}{registro.pk}/change/", {"descricao": "z"}).status_code, 403)
+
+
+@override_settings(MEDIA_ROOT=MEDIA, CACHES=CACHE, REST_FRAMEWORK=limites("1000/min"))
+class AprovacaoTests(Base):
+    URL = "/administracao/"
+
+    def setUp(self):
+        super().setUp()
+        self.chefe = User.objects.create_superuser("chefe", email="chefe@escola.test", password="senha-longa-1")
+        self.adm = User.objects.create_user("adm", email="adm@escola.test", password="senha-longa-1", is_staff=True)
+        self.adm.groups.add(Group.objects.get(name="Administrativo"))
+
+    def checkin_foto(self, n=1):
+        self.assertEqual(self.checkin(fotos=[png() for _ in range(n)]).status_code, 201)
+        return list(FotoAluno.objects.order_by("id"))
+
+    def test_foto_enviada_fica_fora_do_totem_ate_aprovar(self):
+        foto = self.checkin_foto()[0]
+        aluno_id = foto.aluno_id
+        self.client.force_login(self.adm)
+        pagina = self.client.get(self.URL)
+        self.assertEqual(pagina.context["pendentes"]["fotos"], 1)
+        self.assertContains(pagina, foto.miniatura.url)
+        self.assertEqual(self.client.get(f"/api/memorial/alunos/{aluno_id}/").json()["fotos"], [])
+        r = self.client.post(self.URL + "fotos/", {"acao": "aprovar", "selecionados": [foto.pk]}, follow=True)
+        self.assertEqual(r.context["pendentes"]["fotos"], 0)
+        self.assertEqual(len(self.client.get(f"/api/memorial/alunos/{aluno_id}/").json()["fotos"]), 1)
+        self.assertTrue(Registro.objects.filter(descricao__startswith="Foto aprovada", autor="adm").exists())
+
+    def test_aprovacao_so_nos_selecionados(self):
+        a, b, c = self.checkin_foto(3)
+        self.client.force_login(self.adm)
+        self.client.post(self.URL + "fotos/", {"acao": "recusar", "selecionados": [a.pk, c.pk]})
+        status = dict(FotoAluno.objects.values_list("pk", "status"))
+        self.assertEqual([status[a.pk], status[b.pk], status[c.pk]], ["recusada", "pendente", "recusada"])
+
+    def test_decisao_de_outra_pessoa_nao_e_sobrescrita(self):
+        foto = self.checkin_foto()[0]
+        FotoAluno.objects.filter(pk=foto.pk).update(status="recusada")
+        self.client.force_login(self.adm)
+        r = self.client.post(self.URL + "fotos/", {"acao": "aprovar", "selecionados": [foto.pk]}, follow=True)
+        self.assertEqual(FotoAluno.objects.get(pk=foto.pk).status, "recusada")
+        self.assertContains(r, "já tinha(m) sido decidido(s)")
+
+    def test_sem_selecao_ou_acao_invalida_nao_muda_nada(self):
+        foto = self.checkin_foto()[0]
+        self.client.force_login(self.adm)
+        self.assertContains(self.client.post(self.URL + "fotos/", {"acao": "aprovar"}, follow=True), "Selecione ao menos")
+        self.client.post(self.URL + "fotos/", {"acao": "apagar", "selecionados": [foto.pk]})
+        self.client.post(self.URL + "fotos/", {"acao": "aprovar", "selecionados": ["x"]})
+        self.assertEqual(FotoAluno.objects.get(pk=foto.pk).status, "pendente")
+
+    def test_get_nao_decide_e_post_exige_csrf(self):
+        foto = self.checkin_foto()[0]
+        self.client.force_login(self.adm)
+        self.assertEqual(self.client.get(self.URL + "fotos/", {"acao": "aprovar", "selecionados": [foto.pk]}).status_code, 405)
+        rigoroso = Client(enforce_csrf_checks=True)
+        rigoroso.force_login(self.adm)
+        self.assertEqual(rigoroso.post(self.URL + "fotos/", {"acao": "aprovar", "selecionados": [foto.pk]}).status_code, 403)
+        self.assertEqual(FotoAluno.objects.get(pk=foto.pk).status, "pendente")
+
+    def test_cadastros_pendentes(self):
+        config = ConfiguracaoMemorial.atual()
+        config.aprovar_perfis = True
+        config.save()
+        self.checkin()
+        a = Aluno.objects.get()
+        self.assertEqual(a.status, "pendente")
+        self.client.force_login(self.adm)
+        pagina = self.client.get(self.URL)
+        self.assertContains(pagina, a.nome)
+        self.assertNotContains(pagina, a.email)
+        self.assertEqual(self.client.get(f"/api/memorial/alunos/{a.pk}/").status_code, 404)
+        self.client.post(self.URL + "cadastros/", {"acao": "aprovar", "selecionados": [a.pk]})
+        self.assertEqual(self.client.get(f"/api/memorial/alunos/{a.pk}/").status_code, 200)
+
+    def test_tela_avisa_quando_a_aprovacao_de_cadastros_esta_desligada(self):
+        self.client.force_login(self.adm)
+        self.assertContains(self.client.get(self.URL), "sem passar por aqui")
+        config = ConfiguracaoMemorial.atual()
+        config.aprovar_perfis = True
+        config.save()
+        self.assertNotContains(self.client.get(self.URL), "sem passar por aqui")
+
+    def test_acesso_e_contagem(self):
+        self.assertEqual(self.client.get(self.URL).status_code, 302)
+        self.assertEqual(self.client.post(self.URL + "fotos/", {"acao": "aprovar"}).status_code, 302)
+        so_registro = User.objects.create_user("leitor", password="senha-longa-1", is_staff=True)
+        so_registro.user_permissions.add(Permission.objects.get(codename="view_registro"))
+        self.client.force_login(so_registro)
+        self.assertRedirects(self.client.get(self.URL), "/administracao/registro/")
+        self.assertEqual(self.client.post(self.URL + "fotos/", {"acao": "aprovar"}).status_code, 403)
+        self.checkin_foto(2)
+        self.assertEqual(self.client.get(self.URL + "pendencias.json").json()["total"], 0)  # não pode aprovar
+        self.client.force_login(self.adm)
+        self.assertEqual(self.client.get(self.URL + "pendencias.json").json(), {"fotos": 2, "cadastros": 0, "total": 2})
+
+    def test_nome_do_visitante_e_escapado(self):
+        self.checkin_foto()
+        Aluno.objects.update(nome="<img src=x onerror=alert(1)>")
+        self.client.force_login(self.adm)
+        self.assertNotContains(self.client.get(self.URL), "<img src=x")
+
+    def test_sem_email_configurado_nao_envia(self):
+        self.checkin_foto()
+        self.assertEqual(mail.outbox, [])
+
+    @override_settings(EMAIL_HOST="smtp.escola.test")
+    def test_email_com_a_foto_para_quem_aprova(self):
+        User.objects.create_user("comum", email="comum@escola.test", password="senha-longa-1", is_staff=True)
+        self.checkin_foto(2)
+        self.assertEqual(sorted(m.to[0] for m in mail.outbox), ["adm@escola.test", "chefe@escola.test"])
+        m = mail.outbox[0]
+        self.assertEqual(len(m.attachments), 2)
+        self.assertEqual(m.attachments[0][2], "image/jpeg")
+        self.assertIn("Maria Clara Souza", m.subject)
+        self.assertIn("http://testserver/administracao/", m.body)
+        self.assertNotIn(EMAIL, m.body + m.subject)
+        self.assertTrue(Registro.objects.filter(tipo="aviso_email", direcao="saida").exists())
+
+    @override_settings(EMAIL_HOST="smtp.escola.test")
+    def test_checkin_sem_foto_e_sem_aprovacao_nao_avisa(self):
+        self.checkin()
+        self.assertEqual(mail.outbox, [])
+
+    @override_settings(EMAIL_HOST="smtp.escola.test")
+    def test_falha_no_email_nao_derruba_o_checkin(self):
+        with mock.patch("memorial.notificacoes.get_connection", side_effect=OSError("smtp fora")):
+            self.assertEqual(self.checkin(fotos=png()).status_code, 201)
+        self.assertEqual(FotoAluno.objects.count(), 1)
+
+    @override_settings(EMAIL_HOST="smtp.escola.test")
+    def test_remover_ex_aluno_apaga_o_nome_do_aviso(self):
+        self.checkin_foto()
+        Aluno.objects.get().delete()
+        self.assertFalse(Registro.objects.filter(descricao__contains="Maria").exists())
+
+
+def _mgmt(prefixo, total=0, iniciais=0):
+    return {f"{prefixo}-TOTAL_FORMS": total, f"{prefixo}-INITIAL_FORMS": iniciais, f"{prefixo}-MIN_NUM_FORMS": 0, f"{prefixo}-MAX_NUM_FORMS": 1000}
+
+
+@override_settings(MEDIA_ROOT=MEDIA, CACHES=CACHE, REST_FRAMEWORK=limites("1000/min"))
+class GestaoTests(Base):
+    BASE = "/administracao/gerir"
+
+    def setUp(self):
+        super().setUp()
+        self.chefe = User.objects.create_superuser("chefe", password="senha-longa-1")
+        self.client.force_login(self.chefe)
+        self.sala = Sala.objects.get(numero=1)
+
+    def dados_sala(self, **extra):
+        s = self.sala
+        return {
+            "numero": s.numero, "slug": s.slug, "nome": s.nome, "titulo": s.titulo, "subtitulo": s.subtitulo, "cor": s.cor,
+            "tipo": s.tipo, "ativa": "on", **_mgmt("apresentacao_set"), **_mgmt("decada_set"), **_mgmt("marco_set"),
+            **_mgmt("video_set"), **extra,
+        }
+
+    def test_todo_modelo_do_admin_tem_secao_no_painel(self):
+        registrados = set(admin.site._registry) - {Group, User, Registro}
+        self.assertEqual(registrados, {s.modelo for s in SECOES})
+
+    def test_mesmos_campos_do_admin_em_cada_formulario(self):
+        for secao in SECOES:
+            ma = secao.admin
+            url = f"{self.BASE}/{secao.slug}/novo/"
+            if secao.modelo is ConfiguracaoMemorial:
+                url = f"{self.BASE}/{secao.slug}/{ConfiguracaoMemorial.atual().pk}/"
+            elif not ma.has_add_permission(mock.Mock(user=self.chefe)):
+                continue
+            pagina = self.client.get(url)
+            self.assertEqual(pagina.status_code, 200, secao.slug)
+            html = pagina.content.decode()
+            somente_leitura = set(ma.readonly_fields)
+            for nome in flatten_fieldsets(ma.get_fieldsets(mock.Mock(user=self.chefe), None)):
+                if nome not in somente_leitura:
+                    self.assertIn(f'name="{nome}"', html, f"{secao.slug}: {nome}")
+
+    def test_toda_lista_abre_com_e_sem_dados(self):
+        for secao in SECOES:
+            r = self.client.get(f"{self.BASE}/{secao.slug}/", follow=True)
+            self.assertEqual(r.status_code, 200, secao.slug)
+        Marco.objects.create(sala=self.sala, ano=1958, titulo="Primeira", descricao="d", foto=png())
+        self.assertContains(self.client.get(f"{self.BASE}/marcos/"), "Primeira")
+        self.assertEqual(self.client.get(f"{self.BASE}/nada/").status_code, 404)
+
+    def test_busca_filtro_e_acao(self):
+        a = Marco.objects.create(sala=self.sala, ano=1958, titulo="Alfa", descricao="d")
+        Marco.objects.create(sala=Sala.objects.get(numero=2), ano=1960, titulo="Beta", descricao="d")
+        titulos = lambda **f: [l["obj"].titulo for l in self.client.get(f"{self.BASE}/marcos/", f).context["linhas"]]  # noqa: E731
+        self.assertEqual(titulos(q="alf"), ["Alfa"])
+        self.assertEqual(titulos(sala=self.sala.pk), ["Alfa"])
+        self.assertEqual(sorted(titulos(sala="lixo", publicado="lixo")), ["Alfa", "Beta"])
+        self.assertEqual(titulos(publicado="0"), [])
+        self.client.post(f"{self.BASE}/marcos/", {"acao": "despublicar", "selecionados": [a.pk]})
+        self.assertFalse(Marco.objects.get(pk=a.pk).publicado)
+        self.assertEqual(sorted(titulos(publicado="1")), ["Beta"])
+
+    def test_criar_com_foto_e_registrar_quem_fez(self):
+        r = self.client.post(f"{self.BASE}/marcos/novo/", {
+            "sala": self.sala.pk, "ano": 1970, "titulo": "Novo", "descricao": "d", "texto": "longo", "icone": "home",
+            "foto": png(), "ordem": 0, "publicado": "on",
+        })
+        self.assertRedirects(r, f"{self.BASE}/marcos/")
+        m = Marco.objects.get()
+        self.assertEqual((m.texto, m.icone), ("longo", "home"))
+        self.assertTrue(m.foto.name.startswith("fotos/epoca/"))
+        self.assertTrue(Registro.objects.filter(tipo="cadastro_criado", autor="chefe", descricao__contains="Novo").exists())
+        self.assertTrue(LogEntry.objects.filter(object_id=m.pk).exists())  # histórico do admin do Django
+
+    def test_erro_nao_salva_e_mostra_a_mensagem(self):
+        r = self.client.post(f"{self.BASE}/marcos/novo/", {"sala": self.sala.pk, "ano": 10, "titulo": "", "descricao": "", "icone": "home", "ordem": 0})
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "Nada foi salvo")
+        self.assertEqual(Marco.objects.count(), 0)
+
+    def test_sala_salva_com_inlines_e_formularios_vazios(self):
+        url = f"{self.BASE}/salas/{self.sala.pk}/"
+        self.assertContains(self.client.get(url), 'name="apresentacao_set-0-titulo"')
+        dados = self.dados_sala(nome="Fundação Nova", **_mgmt("apresentacao_set", 1), **{
+            "apresentacao_set-0-titulo": "Abertura", "apresentacao_set-0-texto": "Um.", "apresentacao_set-0-icone": "image",
+            "apresentacao_set-0-publicado": "on", **_mgmt("marco_set", 1), "marco_set-0-ano": 1958, "marco_set-0-titulo": "M",
+            "marco_set-0-descricao": "d", "marco_set-0-icone": "star", "marco_set-0-ordem": 0, "marco_set-0-publicado": "on",
+        })
+        self.assertEqual(self.client.post(url, dados).status_code, 302)
+        self.sala.refresh_from_db()
+        self.assertEqual(self.sala.nome, "Fundação Nova")
+        self.assertEqual(self.sala.apresentacao_set.get().titulo, "Abertura")
+        self.assertEqual(self.sala.marco_set.get().titulo, "M")
+
+    def test_sala_envia_varias_fotos_como_no_admin(self):
+        url = f"{self.BASE}/salas/{self.sala.pk}/"
+        self.client.post(url, self.dados_sala(enviar_fotos=[png(), png()], ano_das_fotos=1960))
+        self.assertEqual(self.sala.foto_set.count(), 2)
+
+    def test_acontecimentos_na_pagina_da_decada(self):
+        d = Decada.objects.create(sala=self.sala, rotulo="A", periodo="B", titulo="C")
+        self.client.post(f"{self.BASE}/decadas/{d.pk}/", {
+            "sala": self.sala.pk, "rotulo": "A", "periodo": "B", "titulo": "C", "icone": "star", "ordem": 0, "publicado": "on",
+            **_mgmt("acontecimentos", 1), "acontecimentos-0-ano": 1960, "acontecimentos-0-texto": "Fato", "acontecimentos-0-ordem": 0,
+        })
+        self.assertEqual(d.acontecimentos.get().texto, "Fato")
+
+    def test_apagar_pede_confirmacao_e_mostra_a_cascata(self):
+        d = Decada.objects.create(sala=self.sala, rotulo="A", periodo="B", titulo="C")
+        Acontecimento.objects.create(decada=d, ano=1960, texto="x")
+        url = f"{self.BASE}/decadas/apagar/"
+        r = self.client.post(url, {"selecionados": [d.pk]})
+        self.assertContains(r, "Apagar definitivamente")
+        self.assertTrue(Decada.objects.filter(pk=d.pk).exists())
+        self.client.post(url, {"selecionados": [d.pk], "confirmar": "1"})
+        self.assertFalse(Decada.objects.filter(pk=d.pk).exists())
+        self.assertEqual(self.client.get(url).status_code, 405)
+
+    def test_configuracao_abre_direto_e_nao_apaga(self):
+        r = self.client.get(f"{self.BASE}/configuracao/", follow=True)
+        self.assertContains(r, 'name="aprovar_perfis"')
+        self.assertEqual(self.client.post(f"{self.BASE}/configuracao/apagar/", {"selecionados": [1]}).status_code, 403)
+        self.assertEqual(self.client.get(f"{self.BASE}/configuracao/novo/").status_code, 403)
+
+    def test_permissoes_do_grupo_administrativo(self):
+        adm = User.objects.create_user("adm", password="senha-longa-1", is_staff=True)
+        adm.groups.add(Group.objects.get(name="Administrativo"))
+        self.client.force_login(adm)
+        self.assertEqual(self.client.get(f"{self.BASE}/salas/").status_code, 403)
+        self.assertEqual(self.client.post(f"{self.BASE}/salas/{self.sala.pk}/", self.dados_sala(nome="X")).status_code, 403)
+        self.sala.refresh_from_db()
+        self.assertNotEqual(self.sala.nome, "X")
+        pagina = self.client.get(f"{self.BASE}/alunos/")
+        self.assertEqual(pagina.status_code, 200)
+        nomes = [s.slug for secoes in pagina.context["menu"].values() for s in secoes]
+        self.assertEqual(nomes, ["alunos", "fotos-alunos"])
+        self.assertEqual(self.client.post(f"{self.BASE}/alunos/apagar/", {"selecionados": [1]}).status_code, 403)
+
+    def test_quem_so_ve_nao_altera(self):
+        leitor = User.objects.create_user("leitor", password="senha-longa-1", is_staff=True)
+        leitor.user_permissions.add(Permission.objects.get(codename="view_marco"))
+        m = Marco.objects.create(sala=self.sala, ano=1958, titulo="T", descricao="d")
+        self.client.force_login(leitor)
+        pagina = self.client.get(f"{self.BASE}/marcos/{m.pk}/")
+        self.assertContains(pagina, "não alterá-los")
+        self.assertNotContains(pagina, ">Salvar<")
+        self.assertEqual(self.client.post(f"{self.BASE}/marcos/{m.pk}/", {"titulo": "Z"}).status_code, 403)
+        self.assertEqual(self.client.post(f"{self.BASE}/marcos/", {"acao": "despublicar", "selecionados": [m.pk]}).status_code, 302)
+        self.assertTrue(Marco.objects.get(pk=m.pk).publicado)
+
+    def test_anonimo_vai_para_o_login_e_post_exige_csrf(self):
+        self.client.logout()
+        self.assertEqual(self.client.get(f"{self.BASE}/salas/").status_code, 302)
+        rigoroso = Client(enforce_csrf_checks=True)
+        rigoroso.force_login(self.chefe)
+        self.assertEqual(rigoroso.post(f"{self.BASE}/marcos/apagar/", {"selecionados": [1]}).status_code, 403)
+
+    def test_texto_cadastrado_e_escapado(self):
+        Marco.objects.create(sala=self.sala, ano=1958, titulo="<script>x</script>", descricao="d")
+        self.assertNotContains(self.client.get(f"{self.BASE}/marcos/"), "<script>x")
+
+    def test_todo_icone_do_modelo_tem_desenho_no_painel(self):
+        html = (Path(__file__).parent / "templates/memorial/_icones.html").read_text(encoding="utf-8")
+        for valor in Icone.values:
+            self.assertIn(f'id="i-{valor}"', html)
+
+
+class EstaticoTests(TestCase):
+    def test_url_muda_com_o_conteudo_do_arquivo(self):
+        """O nginx guarda /static/ por 30 dias: CSS novo precisa de URL nova."""
+        with tempfile.TemporaryDirectory() as pasta:
+            caminho = os.path.join(pasta, "a.css")
+            with mock.patch("memorial.templatetags.painel.finders.find", return_value=caminho), override_settings(DEBUG=True):
+                with open(caminho, "w") as f:
+                    f.write("a{}")
+                primeira = estatico("memorial/a.css")
+                with open(caminho, "w") as f:
+                    f.write("b{}")
+                segunda = estatico("memorial/a.css")
+        self.assertRegex(primeira, r"^/static/memorial/a\.css\?v=[0-9a-f]{12}$")
+        self.assertNotEqual(primeira, segunda)
+
+    def test_arquivo_ausente_nao_derruba_a_pagina(self):
+        with override_settings(DEBUG=True):
+            self.assertEqual(estatico("memorial/nao-existe.css"), "/static/memorial/nao-existe.css")
+
+    def test_painel_usa_a_url_versionada(self):
+        User.objects.create_superuser("chefe", password="x")
+        self.client.login(username="chefe", password="x")
+        html = self.client.get("/administracao/").content.decode()
+        self.assertRegex(html, r'href="/static/memorial/administracao\.css\?v=[0-9a-f]{12}"')
+        self.assertRegex(html, r'src="/static/memorial/administracao\.js\?v=[0-9a-f]{12}"')
 
 
 class UtilTests(TestCase):

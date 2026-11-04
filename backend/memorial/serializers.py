@@ -10,6 +10,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from .models import Aluno, ConfiguracaoMemorial, FotoAluno, Registro, ano_atual
+from .notificacoes import avisar_equipe
 from .registro import VISITANTE, registrar, sem_registro
 
 
@@ -189,7 +190,7 @@ class CheckinSerializer(serializers.Serializer):
         return v
 
 
-def registrar_checkin(dados, imagens, config: ConfiguracaoMemorial):
+def registrar_checkin(dados, imagens, config: ConfiguracaoMemorial, url_painel):
     """Cria ou atualiza o cadastro (mesmo e-mail + mesmo ano = mesma pessoa) e guarda as fotos.
 
     Um perfil oculto pela equipe continua oculto: refazer o check-in não o traz de volta.
@@ -217,10 +218,10 @@ def registrar_checkin(dados, imagens, config: ConfiguracaoMemorial):
     # Registrado aqui, como check-in do visitante, e não como cadastro genérico pelos signals.
     with sem_registro():
         aluno.save()
-        for imagem in imagens:
-            FotoAluno.objects.create(aluno=aluno, imagem=imagem, ano=dados["ano"])
+        fotos = [FotoAluno.objects.create(aluno=aluno, imagem=imagem, ano=dados["ano"]) for imagem in imagens]
     tipo = Registro.Tipo.CHECKIN_NOVO if novo else Registro.Tipo.CHECKIN_ATUALIZADO
     registrar(tipo, f"Check-in: {aluno}", autor=VISITANTE, aluno_ref=aluno.pk)
     for _ in imagens:
         registrar(Registro.Tipo.FOTO_ENVIADA, f"Foto enviada por {aluno.nome}", autor=VISITANTE, aluno_ref=aluno.pk)
+    avisar_equipe(aluno, fotos, novo, url_painel)
     return aluno

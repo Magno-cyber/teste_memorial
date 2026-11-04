@@ -1,0 +1,60 @@
+{% load static painel %}<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>{% block titulo %}{% endblock %} · Memorial Dom Bosco</title>
+  <link rel="stylesheet" href="{% estatico 'memorial/administracao.css' %}">
+  <script src="{% estatico 'memorial/administracao.js' %}" defer></script>
+</head>
+<body data-pendencias-url="{% url 'administracao_pendencias' %}" data-pendentes="{{ pendentes.total }}" data-aprovacoes-url="{% url 'administracao' %}">
+{% include "memorial/_icones.html" %}
+
+<header class="topo">
+  <img class="topo__marca" src="{% static 'memorial/marcas/assinatura-dourada.png' %}" alt="Memorial Dom Bosco Maria Izabel Rodrigues">
+  <div class="topo__acoes">
+    <span class="topo__usuario">{{ request.user.get_username }}</span>
+    <a href="{% url 'admin:index' %}">Admin do Django</a>
+    <form method="post" action="{% url 'admin:logout' %}">{% csrf_token %}<button type="submit" class="link">Sair</button></form>
+  </div>
+</header>
+
+<div class="aviso-novo" id="aviso-novo" role="status" hidden>
+  <span id="aviso-novo-texto"></span>
+  <a href="{% url 'administracao' %}">Ver agora</a>
+</div>
+
+<div class="layout">
+  <nav class="lateral" aria-label="Telas do painel">
+    {% if pode_aprovar %}
+      <a class="lateral__item" href="{% url 'administracao' %}"{% if tela == 'aprovacoes' %} aria-current="page"{% endif %}>
+        <svg width="20" height="20" aria-hidden="true"><use href="#i-check"/></svg>Aprovações<span class="selo" id="selo-pendentes"{% if not pendentes.total %} hidden{% endif %}>{{ pendentes.total }}</span>
+      </a>
+    {% endif %}
+    {% for grupo, secoes in menu.items %}
+      <p class="lateral__grupo">{{ grupo }}</p>
+      {% for s in secoes %}
+        <a class="lateral__item" href="{% url 'gestao_lista' s.slug %}"{% if tela == s.slug %} aria-current="page"{% endif %}>
+          <svg width="20" height="20" aria-hidden="true"><use href="#i-{{ s.icone }}"/></svg>{{ s.rotulo }}
+        </a>
+      {% endfor %}
+    {% endfor %}
+    {% if pode_registro %}
+      {% if not menu.Sistema %}<p class="lateral__grupo">Sistema</p>{% endif %}
+      <a class="lateral__item" href="{% url 'administracao_registro' %}"{% if tela == 'registro' %} aria-current="page"{% endif %}>
+        <svg width="20" height="20" aria-hidden="true"><use href="#i-search"/></svg>Entradas e saídas
+      </a>
+    {% endif %}
+  </nav>
+  <main class="pagina">
+    {% if messages %}
+      <ul class="mensagens" role="status">
+        {% for m in messages %}<li class="mensagem mensagem--{{ m.tags }}">{{ m }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+    {% block corpo %}{% endblock %}
+  </main>
+</div>
+</body>
+</html>

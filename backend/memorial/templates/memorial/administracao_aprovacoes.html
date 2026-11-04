@@ -1,0 +1,105 @@
+{% extends "memorial/administracao_base.html" %}
+{% block titulo %}Aprovações{% endblock %}
+{% block corpo %}
+<h1>Aprovações</h1>
+<p class="intro">Nada do que está aqui aparece nos totens. Selecione os itens e decida; os mais antigos vêm primeiro.</p>
+<p class="nota">
+  {% if email_configurado %}Superusuários e o grupo Administrativo também recebem um e-mail a cada envio, com as fotos.
+  {% else %}O aviso por e-mail está desligado: as novidades aparecem só neste painel, enquanto ele estiver aberto. Para ligar, configure <code>EMAIL_HOST</code> no servidor.{% endif %}
+</p>
+
+{% if pode_fotos %}
+<section class="bloco" aria-labelledby="t-fotos">
+  <h2 id="t-fotos">Fotos enviadas <span class="contagem">{{ pendentes.fotos }}</span></h2>
+  {% if fotos %}
+    <form method="post" action="{% url 'administracao_fotos' %}" data-selecao>
+      {% csrf_token %}
+      <div class="selecao">
+        <label class="selecao__todas"><input type="checkbox" data-todas> Selecionar todas</label>
+        <span class="selecao__qtd num" data-qtd aria-live="polite"></span>
+        <div class="selecao__botoes">
+          <button class="botao botao--forte" name="acao" value="aprovar" data-exige-selecao>Aprovar selecionadas</button>
+          <button class="botao botao--recusa" name="acao" value="recusar" data-exige-selecao>Recusar selecionadas</button>
+        </div>
+      </div>
+      <ul class="fotos">
+        {% for f in fotos %}
+          <li class="foto">
+            <label class="foto__marca">
+              <input type="checkbox" name="selecionados" value="{{ f.pk }}" aria-label="Selecionar a foto de {{ f.aluno.nome }}, enviada em {{ f.criado_em|date:'d/m/Y H:i' }}">
+              <img src="{{ f.miniatura.url }}" alt="Foto enviada por {{ f.aluno.nome }}" loading="lazy">
+            </label>
+            <div class="foto__info">
+              <strong>{{ f.aluno.nome }}</strong>
+              <span>{{ f.aluno.ano }} · Turma {{ f.aluno.turma }}</span>
+              <span class="num">{{ f.criado_em|date:"d/m/Y H:i" }}</span>
+              {% if f.aluno.status != 'aprovado' %}<span class="foto__alerta">Cadastro {{ f.aluno.get_status_display|lower }}</span>{% endif %}
+              <button type="button" class="link" data-ampliar="{{ f.imagem.url }}" data-legenda="{{ f.aluno.nome }}, {{ f.aluno.ano }}">Ampliar</button>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+      {% if pendentes.fotos > fila_maxima %}<p class="nota">Mostrando as {{ fila_maxima }} mais antigas de {{ pendentes.fotos }}. As seguintes aparecem ao decidir estas.</p>{% endif %}
+    </form>
+  {% else %}
+    <div class="vazio"><p>Nenhuma foto aguardando aprovação.</p></div>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if pode_cadastros %}
+<section class="bloco" aria-labelledby="t-cadastros">
+  <h2 id="t-cadastros">Cadastros pendentes <span class="contagem">{{ pendentes.cadastros }}</span></h2>
+  {% if not aprovar_perfis %}
+    <p class="nota nota--destaque">
+      Hoje os cadastros novos aparecem na Sala 06 logo depois do check-in, sem passar por aqui.
+      {% if pode_configurar %}Para exigir aprovação, ligue <a href="{% url 'gestao_lista' 'configuracao' %}">Aprovar perfis antes de aparecer</a>.
+      {% else %}Para exigir aprovação, peça a um superusuário para ligar "Aprovar perfis antes de aparecer" na configuração.{% endif %}
+    </p>
+  {% endif %}
+  {% if cadastros %}
+    <form method="post" action="{% url 'administracao_cadastros' %}" data-selecao>
+      {% csrf_token %}
+      <div class="selecao">
+        <label class="selecao__todas"><input type="checkbox" data-todas> Selecionar todos</label>
+        <span class="selecao__qtd num" data-qtd aria-live="polite"></span>
+        <div class="selecao__botoes">
+          <button class="botao botao--forte" name="acao" value="aprovar" data-exige-selecao>Aprovar selecionados</button>
+          <button class="botao botao--recusa" name="acao" value="ocultar" data-exige-selecao>Ocultar selecionados</button>
+        </div>
+      </div>
+      <div class="tabela">
+        <table>
+          <thead>
+            <tr><th scope="col"><span class="oculto-visual">Selecionar</span></th><th scope="col">Nome</th><th scope="col">Ano</th><th scope="col">Turma</th><th scope="col">Redes</th><th scope="col">Fotos</th><th scope="col">Check-in</th></tr>
+          </thead>
+          <tbody>
+            {% for a in cadastros %}
+              <tr>
+                <td data-rotulo="Selecionar"><input type="checkbox" name="selecionados" value="{{ a.pk }}" aria-label="Selecionar {{ a.nome }}"></td>
+                <td data-rotulo="Nome"><strong>{{ a.nome }}</strong></td>
+                <td class="num" data-rotulo="Ano">{{ a.ano }}</td>
+                <td data-rotulo="Turma">{{ a.turma }}</td>
+                <td data-rotulo="Redes">{% if a.instagram %}Instagram: {{ a.instagram }}{% endif %}{% if a.instagram and a.facebook %}<br>{% endif %}{% if a.facebook %}Facebook: {{ a.facebook }}{% endif %}{% if not a.instagram and not a.facebook %}Nenhuma{% endif %}</td>
+                <td class="num" data-rotulo="Fotos">{{ a.qtd_fotos }}</td>
+                <td class="num" data-rotulo="Check-in">{{ a.checkin_em|date:"d/m/Y H:i" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if pendentes.cadastros > fila_maxima %}<p class="nota">Mostrando os {{ fila_maxima }} mais antigos de {{ pendentes.cadastros }}. Os seguintes aparecem ao decidir estes.</p>{% endif %}
+    </form>
+  {% else %}
+    <div class="vazio"><p>Nenhum cadastro aguardando aprovação.</p></div>
+  {% endif %}
+</section>
+{% endif %}
+
+<p class="nota">Decidiu errado? Toda decisão fica em <a href="{% url 'administracao_registro' %}?q=aprov">Entradas e saídas</a>, e pode ser refeita em <a href="{% url 'gestao_lista' 'fotos-alunos' %}">Fotos de ex-alunos</a> ou <a href="{% url 'gestao_lista' 'alunos' %}">Ex-alunos</a>.</p>
+
+<dialog class="ampliada" id="ampliada" aria-label="Foto ampliada">
+  <img alt="" id="ampliada-img">
+  <div class="ampliada__rodape"><span id="ampliada-legenda"></span><button type="button" class="botao" data-fechar>Fechar</button></div>
+</dialog>
+{% endblock %}
