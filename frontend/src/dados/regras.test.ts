@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { corresponde, decadas, iniciais, nomeCurto, periodosDasFotos, rotuloDecada, trechos } from './regras';
-import type { Foto } from './tipos';
+import {
+  apresentacaoDaSala, corresponde, decadas, decadasDaSala, iniciais, nomeCurto, nomeDaDecada, periodosDasFotos, rotuloDecada, trechos,
+} from './regras';
+import type { Foto, Marco, Sala } from './tipos';
 
 const foto = (id: number, ano: number): Foto => ({ id, ano, legenda: '', credito: '', alt: '', src: null, miniatura: null, largura: null, altura: null });
 
@@ -44,5 +46,33 @@ describe('décadas', () => {
       '1958–1969', '1970–1979', '1980–1989', '1990–1999', '2000–2009', '2010–2019', '2020–2026',
     ]);
     expect(decadas(1955, 1972).map(rotuloDecada)).toEqual(['1955–1959', '1960–1969', '1970–1972']);
+  });
+});
+
+describe('tour de 6 espaços', () => {
+  const config = { anoInicial: 1958 } as never;
+  const marco = (id: number, ano: number, titulo: string): Marco => ({ id, ano, titulo, descricao: '', icone: 'star', destaque: false });
+
+  it('dá nome às décadas', () => {
+    expect(decadas(1958, 2026).map(nomeDaDecada)).toEqual([
+      'Anos 60', 'Anos 70', 'Anos 80', 'Anos 90', 'Anos 2000', 'Anos 2010', 'Anos 2020',
+    ]);
+  });
+
+  it('usa as décadas da API nova quando existem', () => {
+    const decadasApi = [{ id: 1, rotulo: 'Anos 60', periodo: '1958 a 1969', titulo: 'x', resumo: '', icone: 'door', acontecimentos: [] }];
+    expect(decadasDaSala({ decadas: decadasApi, marcos: [], config }, 2026)).toBe(decadasApi);
+  });
+
+  it('monta as décadas a partir dos marcos quando a API é a antiga', () => {
+    const r = decadasDaSala({ marcos: [marco(1, 1985, 'Laboratório'), marco(2, 1958, 'O convite'), marco(3, 1962, 'Primária')], config }, 2026);
+    expect(r.map((d) => d.rotulo)).toEqual(['Anos 60', 'Anos 80']);
+    expect(r[0].acontecimentos.map((a) => a.ano)).toEqual([1958, 1962]);
+    expect(r[0].periodo).toBe('1958 a 1969');
+  });
+
+  it('sem apresentação na API, usa o título e o subtítulo da sala', () => {
+    const sala = { titulo: 'Diretores', subtitulo: 'Quem conduziu a escola' } as Sala;
+    expect(apresentacaoDaSala({ sala })).toMatchObject({ titulo: 'Diretores', texto: ['Quem conduziu a escola'] });
   });
 });

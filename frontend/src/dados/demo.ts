@@ -1,17 +1,19 @@
 /**
  * Modo demonstração (VITE_MODO_DEMO=1, usado no Vercel): o conteúdo de exemplo do protótipo,
  * montado no mesmo formato da API. O check-in grava no próprio navegador (localStorage) e aparece
- * na sala 5 do mesmo navegador. Nada é enviado.
+ * na Sala 06 (Alunos) do mesmo navegador. Nada é enviado.
  *
- * Fonte: exemplo.json, extraído do protótipo por scripts/extrair_exemplo.py (o mesmo arquivo que o
- * backend usa em carregar_exemplo, com as mesmas regras de geração das fotos).
+ * Fonte: exemplo.json, extraído do protótipo "Tour do Memorial · 6 espaços" (fotos, vídeos, períodos,
+ * legendas, ex-alunos e, em `R`, a apresentação, as 7 décadas e os 4 marcos de cada espaço).
+ * Atenção: este arquivo deixou de ser idêntico ao backend/memorial/exemplo/tour.json, que ainda é o
+ * das 5 salas; scripts/extrair_exemplo.py sobrescreveria os dois com o protótipo antigo.
  */
 import { ErroHttp } from './erro';
 import exemplo from './exemplo.json';
 import { corresponde, normalizar } from './regras';
 import { SALAS_PADRAO } from './salas';
 import type {
-  AlunoPerfil, AlunoResumo, ConfigCheckin, ConfigMemorial, DadosCheckin, FiltroAlunos, Foto, Marco,
+  AlunoPerfil, AlunoResumo, ConfigCheckin, ConfigMemorial, DadosCheckin, Decada, FiltroAlunos, Foto, Marco,
   PaginaAlunos, RespostaSala, Video,
 } from './tipos';
 import { soUsuario, validarCheckin } from './validacao';
@@ -27,8 +29,22 @@ interface Pessoa {
   fotos: [string, number, string][];
 }
 
+interface ExemploSala {
+  aptitle: string;
+  apicon: string;
+  apcap: string;
+  intro: string[];
+  /** 7 décadas: título, resumo, três acontecimentos ("1958 · Convite às famílias") e ícone. */
+  dec: { t: string; d: string; ev: string[]; icn: string }[];
+  /** 4 marcos: ícone, ano, título, resumo e texto explicativo. */
+  marcos: [string, number, string, string, string][];
+}
+
 interface Exemplo {
-  hist: Record<string, { years: number[]; hi: number; cards: [string, string, string][] }>;
+  R: Record<string, ExemploSala>;
+  /** "Anos 60", "Anos 70"… e "1958 a 1969", "1970 a 1979"… */
+  decn: string[];
+  decr: string[];
   fotos: Record<string, { act: number; items: [string, number, string][] }>;
   vids: Record<string, [[string, string, string, string], [string, string, string, string][]]>;
   periods: [string, number][];
@@ -82,12 +98,25 @@ function fotosDoPeriodo(sala: string, indice: number, inicio: number, fim: numbe
 function montarSala(numero: number): RespostaSala {
   const sala = SALAS_PADRAO.find((s) => s.numero === numero) ?? SALAS_PADRAO[0];
   const chave = String(numero);
-  const hist = DADOS.hist[chave];
-  const marcos: Marco[] = hist
-    ? hist.years.map((ano, i) => {
-        const [icone, titulo, descricao] = hist.cards[i];
-        return { id: numero * 100 + i, ano, titulo, descricao, icone, destaque: i === hist.hi };
-      })
+  const r = DADOS.R[chave];
+  const marcos: Marco[] = r
+    ? r.marcos.map(([icone, ano, titulo, descricao, texto], i) => (
+        { id: numero * 100 + i, ano, titulo, descricao, texto, icone, destaque: false, foto: null }))
+    : [];
+  const decadas: Decada[] = r
+    ? r.dec.map((d, i) => ({
+        id: numero * 100 + i,
+        rotulo: DADOS.decn[i],
+        periodo: DADOS.decr[i],
+        titulo: d.t,
+        resumo: d.d,
+        icone: d.icn,
+        foto: null,
+        acontecimentos: d.ev.map((e) => {
+          const [ano, ...texto] = e.split(' · ');
+          return { ano: Number(ano), texto: texto.join(' · ') };
+        }),
+      }))
     : [];
   const fotos: Foto[] = [];
   if (DADOS.captions[chave]) {
@@ -108,7 +137,10 @@ function montarSala(numero: number): RespostaSala {
         duracao: 12, destaque: i === 0, legenda: null,
       }))
     : [];
-  return { versao: 'demo', config: CONFIG, sala, demonstrativo: true, marcos, fotos, videos };
+  const apresentacao = r
+    ? { titulo: r.aptitle, texto: r.intro, foto: null, legenda: r.apcap, icone: r.apicon }
+    : null;
+  return { versao: 'demo', config: CONFIG, sala, demonstrativo: true, marcos, fotos, videos, apresentacao, decadas };
 }
 
 // ---------------------------------------------------------------- ex-alunos

@@ -1,6 +1,6 @@
 /**
- * O totem de uma sala. Cada totem conhece só a própria sala: as salas 1 a 4 mostram História,
- * Fotos e Vídeos (SalaConteudo); a sala 5 mostra a busca de ex-alunos (SalaFechamento).
+ * O totem de um espaço. Cada totem conhece só a própria sala e mostra Apresentação, Linha do tempo,
+ * Marcos, Fotos e Vídeos (SalaConteudo); a Sala 06 (Alunos) tem ainda a aba Colegas.
  * Inatividade, Voltar do Android e troca de conteúdo trabalham sobre o mesmo estado (estado.ts).
  */
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
@@ -12,7 +12,6 @@ import { InatividadeProvider } from '../quiosque/Inatividade';
 import { Moldura } from './Moldura';
 import { emInicio as estaNoInicio, INICIAL, voltar, type EstadoTotem } from './estado';
 import { SalaConteudo } from './SalaConteudo';
-import { SalaFechamento } from './SalaFechamento';
 import '../componentes/componentes.css';
 import './totem.css';
 import './salas.css';
@@ -48,8 +47,6 @@ function TotemSala({ numero }: { numero: number }) {
         <Espera offline={conexao === 'offline'} />
       </Moldura>
     );
-  } else if (dados.sala.tipo === 'fechamento') {
-    tela = <SalaFechamento key={geracao} estado={estado} mudar={mudar} dados={dados} conexao={conexao} />;
   } else {
     tela = <SalaConteudo key={geracao} estado={estado} mudar={mudar} dados={dados} />;
   }

@@ -6,7 +6,7 @@
  */
 import { quiosque } from './quiosque';
 
-export const TOTAL_SALAS = 5;
+export const TOTAL_SALAS = 6;
 const CHAVE = 'memorial:sala';
 
 export function salaValida(v: unknown): number | null {

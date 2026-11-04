@@ -1,5 +1,5 @@
 /**
- * Diretório de ex-alunos (sala 5). A busca acontece no servidor, então a sala 5 precisa de rede:
+ * Diretório de ex-alunos (Sala 06). A busca acontece no servidor, então a Sala 06 precisa de rede:
  * sem servidor, a tela mantém o último resultado (também guardado no aparelho) e avisa.
  * Enquanto a busca está na tela, a lista é atualizada a cada ~10 s para novos check-ins aparecerem.
  */

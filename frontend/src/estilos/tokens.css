@@ -1,41 +1,44 @@
 /* tokens.css · Memorial Dom Bosco Maria Izabel Rodrigues
    Palco lógico de 1600 × 900 px CSS (16:9), escalado para a tela real (quiosque/Palco.tsx).
    Contrastes medidos (WCAG 2.1) estão registrados no DESIGN.md. Para trocar a paleta pelo manual
-   da marca, altere só este arquivo. */
+   da marca, altere só este arquivo.
+   Identidade "Proposta B · dourado e branco gelo" (Marketing, 30/10/2026). Para voltar à paleta
+   anterior (grafite e marfim quente), reverta o commit "identidade visual" que mexeu aqui. */
 :root {
   /* neutros escuros */
-  --grafite: #2b2a28;
-  --grafite-2: #3d3b38;
+  --grafite: #23211d;
+  --grafite-2: #3a3732;
   --grafite-3: #1f1e1c;
 
   /* dourado: o "dourado" puro é ornamento (filetes, pontos, anéis) ou texto sobre grafite (4,64:1).
      Texto dourado sobre fundo claro usa sempre --dourado-texto. */
-  --dourado: #b08d57;
-  --dourado-claro: #d9c39b;
-  --dourado-texto: #7c6034; /* protótipo: #8A6B3A (4,35:1), escurecido para 5,16:1 no marfim */
-  --dourado-fundo: #efe6d6; /* círculo de ícone e selo NOVO */
-  --marca-texto: #ead9b6;   /* realce do trecho encontrado na busca */
+  --dourado: #c29a45;
+  --dourado-claro: #e9d3a0;
+  --dourado-texto: #855f10; /* protótipo: #8C6514 (4,37:1 no champanhe), escurecido para 5,41:1 no branco gelo */
+  --dourado-fundo: #f4e9cf; /* champanhe: círculo de ícone e selo NOVO */
+  --marca-texto: #f1dfae;   /* realce do trecho encontrado na busca */
 
   /* neutros claros */
-  --marfim: #f3f0ea;
-  --areia: #e9e4da;
-  --cartao: #fbf9f5;
-  --linha: #e2dcd1;
+  --marfim: #f6f8f8; /* branco gelo */
+  --areia: #eef2f1;
+  --cartao: #ffffff;
+  --linha: #e0e6e5;
   --branco: #ffffff;
 
   /* texto */
-  --suave: #5e5a53;   /* 6,03:1 no marfim */
-  --suave-2: #67635d; /* protótipo: #77736C (4,15:1), escurecido para 5,25:1 no marfim */
-  --suave-escuro: #cfc8ba; /* texto secundário sobre grafite (9,1:1) */
+  --suave: #5a5f62;   /* 6,07:1 no branco gelo */
+  --suave-2: #656a6d; /* protótipo: #73787B (4,19:1), escurecido para 5,14:1 no branco gelo */
+  --suave-escuro: #cfc8ba; /* texto secundário sobre grafite (9,7:1) */
   --erro: #9a3b2e;
 
-  /* salas: a cor entra no número da sala, na aba ativa, no anel do ano e no período ativo.
-     Todas sustentam texto marfim a 4,5:1 ou mais (a sala 2 foi escurecida: #A07D47 dava 3,35:1). */
-  --sala-1: #4a4844;
-  --sala-2: #84673a;
-  --sala-3: #8e5444;
-  --sala-4: #5a6650;
-  --sala-5: #2b2a28;
+  /* espaços: a cor entra no selo, na aba ativa, na borda do cabeçalho, no ano e na capa do perfil.
+     O texto sobre ela é sempre --branco (a Esporte dá 4,66:1 com branco e 4,37:1 com o branco gelo). */
+  --sala-1: #8e6918; /* Fundação */
+  --sala-2: #2f62b0; /* Diretores */
+  --sala-3: #17805f; /* Professores */
+  --sala-4: #c43f60; /* Artes */
+  --sala-5: #b85a0c; /* Esporte */
+  --sala-6: #6e4ba8; /* Alunos */
 
   /* tipo */
   --serif: "Cormorant Garamond", Georgia, "Times New Roman", serif;
@@ -52,8 +55,8 @@
   /* forma e movimento */
   --raio-cartao: 10px;
   --raio-pilula: 999px;
-  --sombra-repouso: 0 6px 18px rgb(43 42 40 / .06);
-  --sombra-toque: 0 10px 24px rgb(43 42 40 / .14);
+  --sombra-repouso: 0 6px 18px rgb(35 33 29 / .06);
+  --sombra-toque: 0 10px 24px rgb(35 33 29 / .14);
   --curva: cubic-bezier(.22, 1, .36, 1);
   --dur: 240ms;
 }

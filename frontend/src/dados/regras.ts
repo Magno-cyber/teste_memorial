@@ -2,7 +2,7 @@
  * Regras puras, usadas pelas telas e pelo conjunto de demonstração (o backend aplica as mesmas):
  * busca sem acento, realce do trecho encontrado, períodos de 5 anos e chips de década.
  */
-import type { Foto } from './tipos';
+import type { Apresentacao, Decada, Foto, Marco, RespostaSala } from './tipos';
 
 const MARCAS = /[̀-ͯ]/g;
 
@@ -99,7 +99,7 @@ export function periodosDasFotos(fotos: Foto[], anoInicial: number, anoAtual: nu
     });
 }
 
-// ---------------------------------------------------------------- décadas (sala 5)
+// ---------------------------------------------------------------- décadas (busca da Sala 06)
 
 /**
  * Chips de década: 1958–1969, 1970–1979 … 2020–2026. Se a primeira década tiver menos de 5 anos
@@ -119,6 +119,54 @@ export function decadas(anoInicial: number, anoAtual: number): [number, number][
 }
 
 export const rotuloDecada = ([a, b]: [number, number]) => `${a}–${b}`;
+
+/** [1958, 1969] → "Anos 60"; [2000, 2009] → "Anos 2000"; [2020, 2026] → "Anos 2020". */
+export function nomeDaDecada([, fim]: [number, number]): string {
+  const d = fim - (fim % 10);
+  return `Anos ${d >= 2000 ? d : String(d).slice(2)}`;
+}
+
+// ---------------------------------------------------------------- conteúdo do tour (6 espaços)
+
+/**
+ * Linha do tempo da sala. A API nova manda `decadas`; a antiga só manda `marcos`, e neste caso as
+ * décadas são montadas a partir deles (só as décadas que têm marco, com o resumo vazio).
+ */
+export function decadasDaSala(dados: Pick<RespostaSala, 'decadas' | 'marcos' | 'config'>, anoAtual: number): Decada[] {
+  if (dados.decadas?.length) return dados.decadas;
+  const marcos = [...dados.marcos].sort((a, b) => a.ano - b.ano);
+  const saida: Decada[] = [];
+  for (const d of decadas(dados.config.anoInicial, anoAtual)) {
+    const doPeriodo = marcos.filter((m) => m.ano >= d[0] && m.ano <= d[1]);
+    if (!doPeriodo.length) continue;
+    saida.push({
+      id: d[0],
+      rotulo: nomeDaDecada(d),
+      periodo: `${d[0]} a ${d[1]}`,
+      titulo: nomeDaDecada(d),
+      resumo: '',
+      icone: doPeriodo[0].icone,
+      foto: doPeriodo[0].foto ?? null,
+      acontecimentos: doPeriodo.map((m) => ({ ano: m.ano, texto: m.titulo })),
+    });
+  }
+  return saida;
+}
+
+/** Texto de abertura da sala; sem ele (API antiga), usa o título e o subtítulo da sala. */
+export function apresentacaoDaSala(dados: Pick<RespostaSala, 'apresentacao' | 'sala'>): Apresentacao {
+  if (dados.apresentacao) return dados.apresentacao;
+  return {
+    titulo: dados.sala.titulo,
+    texto: dados.sala.subtitulo ? [dados.sala.subtitulo] : [],
+    foto: null,
+    legenda: '',
+    icone: 'image',
+  };
+}
+
+/** Os quatro marcos da aba Marcos, em ordem de ano. */
+export const marcosOrdenados = (marcos: Marco[]): Marco[] => [...marcos].sort((a, b) => a.ano - b.ano);
 
 // ---------------------------------------------------------------- formatos
 

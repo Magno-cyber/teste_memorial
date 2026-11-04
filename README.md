@@ -1,15 +1,21 @@
 # Memorial Dom Bosco Maria Izabel Rodrigues
 
-Tour do Memorial em **cinco salas, com um totem touchscreen por sala**, e um **check-in pelo
-celular** do visitante. Quem faz o check-in na entrada pode ser encontrado pelos colegas na sala 5.
+Tour do Memorial em **seis espaços, com um totem touchscreen por espaço**, e um **check-in pelo
+celular** do visitante. Quem faz o check-in na entrada pode ser encontrado pelos colegas na Sala 06 (Alunos).
 
 | Sala | Nome | O totem mostra |
 |---|---|---|
-| 1 | Educação | História (linha do tempo), Fotos (períodos de 5 anos) e Vídeos |
-| 2 | Troféus | idem |
-| 3 | Artes | idem |
-| 4 | Professoras | idem |
-| 5 | Fechamento | Busca de ex-alunos por nome, ano ou década, e o perfil de cada pessoa |
+| 01 | Fundação | Apresentação, Linha do tempo (7 décadas), Marcos (4 cartões), Fotos (períodos de 5 anos) e Vídeos |
+| 02 | Diretores | idem |
+| 03 | Professores | idem |
+| 04 | Artes | idem |
+| 05 | Esporte | idem |
+| 06 | Alunos | as mesmas 5 abas **e** a aba **Colegas**: busca de ex-alunos por nome, ano ou década, e o perfil de cada pessoa |
+
+> **Em andamento (frontend × backend):** o frontend já está nos 6 espaços (tour "Proposta B", 30/10/2026).
+> O backend ainda precisa criar as salas 1 a 6 e mandar `apresentacao`, `decadas` e os campos novos dos
+> marcos. O contrato está em `docs/mudancas-frontend-tour-6-espacos.md`. Enquanto isso, o modo demonstração
+> (abaixo) mostra tudo funcionando.
 
 - **Frontend** (`frontend/`): React + Vite + TypeScript, PWA para funcionar offline. Duas páginas:
   o totem (`/`) e o check-in (`/checkin`). Regras visuais em `DESIGN.md`, produto em `PRODUCT.md`,
@@ -33,7 +39,7 @@ docker compose up -d --build
 docker compose exec backend python manage.py carregar_exemplo   # opcional: conteúdo de exemplo
 ```
 
-- Totens: `http://<servidor>:8080/?sala=1` … `?sala=5`
+- Totens: `http://<servidor>:8080/?sala=1` … `?sala=6`
 - Check-in: `http://<servidor>:8080/checkin` (é o endereço do QR Code)
 - Admin: `http://<servidor>:8080/admin` (usuário do `.env`)
 
@@ -54,7 +60,11 @@ pelo celular do visitante (rede da escola com Wi-Fi aberto, ou um domínio públ
 
 ## Conteúdo de exemplo
 
-`carregar_exemplo` carrega o conteúdo do protótipo (extraído por `scripts/extrair_exemplo.py` para
+> **Atenção:** o `carregar_exemplo` do backend ainda carrega o conteúdo do protótipo **antigo** (5 salas).
+> O conteúdo do tour de 6 espaços está hoje só no frontend (`frontend/src/dados/exemplo.json`, modo demo).
+> Quem atualizar o backend pode usá-lo como base do novo `tour.json`.
+
+`carregar_exemplo` carrega o conteúdo do protótipo antigo (extraído por `scripts/extrair_exemplo.py` para
 `backend/memorial/exemplo/tour.json`): 8 marcos por sala, fotos de exemplo em todos os períodos
 (sem imagem real: o totem mostra uma moldura provisória), 5 vídeos curtos por sala (precisa de ffmpeg,
 que já vem na imagem) e 22 ex-alunos fictícios. Tudo fica marcado como **demonstrativo** e o rodapé
@@ -84,7 +94,7 @@ apagar um registro apaga os arquivos do disco.
 
 | Endpoint | Uso |
 |---|---|
-| `GET sala/<n>/` | tudo que o totem da sala precisa: `{versao, config, sala, demonstrativo, marcos, fotos, videos}` |
+| `GET sala/<n>/` | tudo que o totem da sala precisa: `{versao, config, sala, demonstrativo, marcos, fotos, videos}` e, no tour de 6 espaços, também `apresentacao` e `decadas` (opcionais; ver `docs/mudancas-frontend-tour-6-espacos.md`) |
 | `GET versao/?sala=<n>` | `{"versao": "…"}`, muda só quando algo daquela sala (ou a configuração) muda |
 | `GET alunos/?q=&ano=&decada=1990-1999&pagina=` | busca no diretório (12 por página), recentes primeiro |
 | `GET alunos/<id>/` | perfil, redes, fotos **aprovadas** e até 4 colegas da mesma turma |
@@ -100,7 +110,7 @@ ano atualiza o cadastro em vez de duplicar. O corpo das requisições não é re
 
 ## Privacidade (LGPD)
 
-Os dados da sala 5 são de pessoas reais:
+Os dados da Sala 06 (aba Colegas) são de pessoas reais:
 
 - o **e-mail nunca sai do servidor** (nenhuma resposta da API o contém; há teste para isso);
 - o perfil só aparece com **consentimento** e status *aprovado* (com **aprovar perfis** ligado no admin,
@@ -115,18 +125,22 @@ Os dados da sala 5 são de pessoas reais:
 
 ## Frontend
 
-- **Salas 1 a 4** funcionam offline com a última cópia (`localStorage` + service worker). A **sala 5
-  precisa do servidor**: sem rede, mostra o último resultado com um aviso no rodapé. Na busca, a lista
-  se atualiza a cada ~10 s para novos check-ins aparecerem sozinhos.
+- **Cada espaço tem 5 abas**: Apresentação, Linha do tempo, Marcos, Fotos e Vídeos. A **Sala 06** tem
+  ainda a aba **Colegas** (busca e perfil). Marcos: tocar num cartão abre o texto explicativo.
+- As abas de conteúdo funcionam offline com a última cópia (`localStorage` + service worker). A aba
+  **Colegas precisa do servidor**: sem rede, mostra o último resultado com um aviso no rodapé. Na busca,
+  a lista se atualiza a cada ~10 s para novos check-ins aparecerem sozinhos.
 - **Conteúdo novo** só entra quando o totem volta ao início da sala, ou depois de 30 s sem toque.
   Idem para uma versão nova do app.
-- **Inatividade**: aviso aos 90 s, contagem de 15 s, e o totem volta ao início da sala (aba História,
-  destaque inicial, overlays fechados, busca limpa). Vídeo tocando não dispara o aviso.
+- **Inatividade**: aviso aos 90 s, contagem de 15 s, e o totem volta ao início da sala (aba Apresentação,
+  década e marco fechados, overlays fechados, busca limpa). Vídeo tocando não dispara o aviso.
 - **Botão Voltar** do Android fecha o overlay aberto, depois o teclado, depois volta do perfil à busca;
   nunca sai do app.
 - **Busca**: teclado virtual próprio (o do Android cobriria metade da tela).
 - **Parâmetros de URL**: `?sala=N`, `?aviso=20&contagem=5&lightbox=10` (segundos), `?diag`,
   `?semtelacheia`, `?tecladonativo` (teclado do sistema, para testar no computador).
+- **Perfil do aluno**: capa na cor da Sala 06, foto, nome e quatro abas (Visão geral, Fotos, Colegas, Sobre).
+  Dentro do perfil as abas da sala somem; o botão **Voltar à busca** leva de volta.
 
 ### Desenvolvimento
 
@@ -135,7 +149,7 @@ Com o `docker compose` rodando (para ter a API em :8080):
 ```bash
 cd frontend
 npm install
-npm run dev          # http://localhost:5173/?sala=1 e http://localhost:5173/checkin
+npm run dev          # http://localhost:5173/?sala=1 … ?sala=6 e http://localhost:5173/checkin
 ```
 
 Outro servidor: `VITE_BACKEND=http://192.168.0.10:8080 npm run dev`. Depois de mudar o frontend,
@@ -144,8 +158,8 @@ Outro servidor: `VITE_BACKEND=http://192.168.0.10:8080 npm run dev`. Depois de m
 ### Modo demonstração (Vercel)
 
 Com `VITE_MODO_DEMO=1` no build (variável de ambiente do projeto no Vercel), o app não precisa de
-servidor: usa o conteúdo de exemplo embutido (`frontend/src/dados/exemplo.json`), `?sala=N` funciona
-normalmente, e o check-in grava no próprio navegador e aparece na sala 5 aberta nele, com o aviso
+servidor: usa o conteúdo de exemplo embutido (`frontend/src/dados/exemplo.json`), `?sala=N` (1 a 6) funciona
+normalmente, e o check-in grava no próprio navegador e aparece na Sala 06 aberta nele, com o aviso
 "Modo demonstração: nada é enviado". `vercel.json` já tem a rota `/checkin`. Para ligar o Vercel ao
 servidor de verdade (túnel), veja `vercel.backend.json` e o serviço `cloudflared` do compose.
 
@@ -158,10 +172,10 @@ docker compose exec backend python manage.py test memorial
 # frontend
 cd frontend
 npm run typecheck
-npm run test:unit                         # regras da busca, períodos, décadas, contraste dos tokens
+npm run test:unit                         # regras da busca, períodos, décadas, sala 1 a 6, contraste dos tokens
 npx playwright install chromium           # só na primeira vez
 docker compose exec backend python manage.py carregar_exemplo --limpar
-URL=http://localhost:8080/ npm run test:e2e   # 40 verificações, em 1600 × 900 e 1920 × 1080
+URL=http://localhost:8080/ npm run test:e2e   # em 1600 × 900 e 1920 × 1080 (precisa do backend com as 6 salas)
 ```
 
 O e2e faz um check-in de teste por execução ("Teste E2E …", e-mail `@exemplo.invalid`); apague-os no
@@ -179,6 +193,10 @@ ffmpeg -i entrada.mov -c:v libx264 -profile:v high -crf 23 -preset slow \
 
 **Som**: o volume inicial vem do admin (vídeos com som ou mudos); o player tem controle de volume e
 mostra a legenda WebVTT, se houver. Fones ou caixas de som ficam por conta da instalação.
+
+**Celular (teste rápido)**: com `npm run dev` o Vite já aceita acessos da rede (`--host`). Abra
+`http://<IP do computador>:5173/?sala=N` no celular, no mesmo Wi-Fi, e deite o aparelho (a tela é 16:9).
+A sala escolhida fica guardada no navegador; use outro `?sala=N` para trocar.
 
 **Rede**: o servidor deve ficar na rede interna com IP fixo (ou um nome como `memorial.local`).
 Adicione o endereço em `DJANGO_ALLOWED_HOSTS` e `DJANGO_CSRF_TRUSTED_ORIGINS`. O service worker
@@ -218,3 +236,8 @@ DJANGO_DEBUG=1 python manage.py migrate && DJANGO_DEBUG=1 python manage.py runse
 ```
 
 Precisa de `ffmpeg` instalado para capas e duração dos vídeos (e para os vídeos de exemplo).
+
+## Mudanças do tour de 6 espaços
+
+O que mudou no frontend, o contrato que o backend precisa entregar e os cuidados de contraste estão em
+[`docs/mudancas-frontend-tour-6-espacos.md`](docs/mudancas-frontend-tour-6-espacos.md).

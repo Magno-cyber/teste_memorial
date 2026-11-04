@@ -4,6 +4,10 @@
  * URLs de mídia são relativas (/media/...).
  */
 
+/**
+ * 'conteudo': sala com as 5 abas (Apresentação, Linha do tempo, Marcos, Fotos, Vídeos).
+ * 'fechamento': a Sala 06 (Alunos): as mesmas 5 abas mais a aba Colegas (busca de ex-alunos).
+ */
 export type TipoSala = 'conteudo' | 'fechamento';
 
 export interface Sala {
@@ -34,10 +38,46 @@ export interface Marco {
   id: number;
   ano: number;
   titulo: string;
+  /** Resumo de uma frase. */
   descricao: string;
   icone: string;
-  /** Destaque inicial da linha do tempo (um por sala). */
+  /** Destaque inicial (um por sala). Na aba Marcos nenhum cartão abre sozinho; o campo é mantido por compatibilidade. */
   destaque: boolean;
+  /** Foto de época do marco. Ausente ou null = moldura provisória com o ícone. */
+  foto?: string | null;
+  /** Texto explicativo, mostrado quando o visitante toca no cartão. Ausente = só o resumo. */
+  texto?: string;
+}
+
+/** Texto de abertura da sala (aba Apresentação). */
+export interface Apresentacao {
+  titulo: string;
+  /** Parágrafos. */
+  texto: string[];
+  /** Foto de época. Ausente ou null = moldura provisória com o ícone. */
+  foto?: string | null;
+  legenda: string;
+  icone: string;
+}
+
+export interface Acontecimento {
+  ano: number;
+  texto: string;
+}
+
+/** Uma década da linha do tempo da sala (a aba Linha do tempo mostra todas lado a lado). */
+export interface Decada {
+  id: number;
+  /** "Anos 60". */
+  rotulo: string;
+  /** "1958 a 1969". */
+  periodo: string;
+  titulo: string;
+  resumo: string;
+  icone: string;
+  foto?: string | null;
+  /** Três por década. */
+  acontecimentos: Acontecimento[];
 }
 
 export interface Foto {
@@ -78,9 +118,12 @@ export interface RespostaSala {
   marcos: Marco[];
   fotos: Foto[];
   videos: Video[];
+  /** Novos na versão de 6 espaços. Ausentes na API antiga: o app deriva o que puder (regras.ts). */
+  apresentacao?: Apresentacao | null;
+  decadas?: Decada[];
 }
 
-// ---------------------------------------------------------------- sala 5
+// ---------------------------------------------------------------- Sala 06 · aba Colegas
 
 export interface AlunoResumo {
   id: number | string;

@@ -44,7 +44,7 @@ export const quiosque = {
   /** Conteúdo novo entra quando a sala volta ao início, ou depois deste tempo sem toque. */
   aplicarConteudoAposMs: 30_000,
 
-  /** Na busca da sala 5, a lista é atualizada a cada N ms para novos check-ins aparecerem. */
+  /** Na busca da Sala 06, a lista é atualizada a cada N ms para novos check-ins aparecerem. */
   atualizarBuscaMs: 10_000,
 
   /** Tenta tela cheia e orientação paisagem no primeiro toque. */

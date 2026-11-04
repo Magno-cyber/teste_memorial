@@ -56,7 +56,7 @@ async function resultados(p) {
   await p.locator('.tt-pessoas:not(.is-defasada)').waitFor();
 }
 
-/** Digita no teclado virtual da sala 5, tecla por tecla. */
+/** Digita no teclado virtual da Sala 06 (aba Colegas), tecla por tecla. */
 async function digitar(p, texto) {
   await p.locator('input[type=search]').click();
   for (const c of texto) await p.locator(`.m-teclado [aria-label="${c === ' ' ? 'Espaço' : c.toUpperCase()}"]`).click();
@@ -73,13 +73,14 @@ for (const [w, h] of TELAS) {
   const foto = (n) => p.screenshot({ path: `${CAPTURAS}${w}-${n}.png` });
 
   // ---------------------------------------------------------------- salas pela URL
-  const NOMES = ['Educação', 'Troféus', 'Artes', 'Professoras', 'Fechamento'];
-  for (let n = 1; n <= 5; n++) {
+  const NOMES = ['Fundação', 'Diretores', 'Professores', 'Artes', 'Esporte', 'Alunos'];
+  for (let n = 1; n <= 6; n++) {
     await verificar(`sala ${n} abre por ?sala=${n}`, async () => {
       await abrir(p, `sala=${n}`);
-      confere((await p.locator('.tt-cab__n').innerText()) === `Sala ${n} de 5`, 'percurso errado');
+      confere((await p.locator('.tt-cab__n').innerText()) === `Sala 0${n} de 06`, 'percurso errado');
       confere((await p.locator('.tt-cab__sala b').innerText()) === NOMES[n - 1], 'nome da sala errado');
-      if (n < 5) confere((await p.locator('.tt-marco').count()) === 8, '8 marcos esperados');
+      confere((await p.getByRole('tab', { name: /Apresentação/ }).getAttribute('aria-selected')) === 'true', 'deveria abrir na Apresentação');
+      confere((await p.getByRole('tab').count()) === (n === 6 ? 6 : 5), n === 6 ? 'Sala 06 tem 6 abas' : 'esperadas 5 abas');
       await foto(`sala${n}`);
     });
   }
@@ -87,21 +88,39 @@ for (const [w, h] of TELAS) {
   await verificar('a sala fica guardada sem a query (PWA instalado)', async () => {
     await p.goto(`${BASE}?semtelacheia`);
     await p.locator('.tt-cab__n').waitFor();
-    confere((await p.locator('.tt-cab__n').innerText()) === 'Sala 5 de 5', 'não lembrou a sala');
+    confere((await p.locator('.tt-cab__n').innerText()) === 'Sala 06 de 06', 'não lembrou a sala');
   });
 
-  // ---------------------------------------------------------------- história
-  await verificar('troca de marco na linha do tempo', async () => {
+  // ---------------------------------------------------------------- linha do tempo e marcos
+  await verificar('linha do tempo: 7 décadas, troca por toque e pelas setas', async () => {
     await abrir(p, 'sala=1');
-    confere((await p.locator('.tt-marco.is-ativo .tt-marco__ano').innerText()) === '1984', 'destaque inicial deveria ser 1984');
-    await p.locator('.tt-marco__cartao', { hasText: 'Primeiras turmas' }).click();
-    confere((await p.locator('.tt-marco.is-ativo .tt-marco__titulo').innerText()) === 'Primeiras turmas', 'destaque não mudou');
-    await p.locator('.tt-marco__ponto[aria-label^="2020"]').click();
-    confere((await p.locator('.tt-marco.is-ativo .tt-marco__ano').innerText()) === '2020', 'toque no ponto não mudou');
+    await p.getByRole('tab', { name: /Linha do tempo/ }).click();
+    confere((await p.locator('.tt-dec').count()) === 7, '7 décadas esperadas');
+    confere((await p.locator('.tt-painel .tt-eyb').innerText()).includes('DÉCADA 1 DE 7'), 'abre na primeira década');
+    await p.locator('.tt-dec').nth(3).click();
+    confere((await p.locator('.tt-painel .tt-eyb').innerText()).includes('DÉCADA 4 DE 7'), 'toque na década não mudou');
+    confere((await p.locator('.tt-painel__ev li').count()) === 3, '3 acontecimentos por década');
+    await p.getByRole('button', { name: 'Próxima década' }).click();
+    confere((await p.locator('.tt-painel .tt-eyb').innerText()).includes('DÉCADA 5 DE 7'), 'seta não avançou');
+    await foto('linha-do-tempo');
+  });
+
+  await verificar('marcos: 4 cartões, o texto abre e fecha no toque', async () => {
+    await p.getByRole('tab', { name: /Marcos/ }).click();
+    confere((await p.locator('.tt-mc').count()) === 4, '4 marcos esperados');
+    confere((await p.locator('.tt-mc__longo').count()) === 0, 'nenhum cartão abre sozinho');
+    await p.locator('.tt-mc').nth(1).click();
+    confere((await p.locator('.tt-mc.is-aberto .tt-mc__longo').count()) === 1, 'texto não abriu');
+    await foto('marcos');
+    await p.locator('.tt-mc').nth(2).click();
+    confere((await p.locator('.tt-mc.is-aberto').count()) === 1, 'só um cartão aberto por vez');
+    await p.locator('.tt-mc.is-aberto').click();
+    confere((await p.locator('.tt-mc.is-aberto').count()) === 0, 'segundo toque deveria fechar');
   });
 
   // ---------------------------------------------------------------- fotos
   await verificar('paginação de fotos', async () => {
+    await abrir(p, 'sala=1');
     await p.getByRole('tab', { name: /Fotos/ }).click();
     const cont = p.locator('.tt-galeria__cont');
     confere((await cont.innerText()).includes('mostrando 1 a 8'), 'primeira página');
@@ -139,9 +158,8 @@ for (const [w, h] of TELAS) {
 
   await verificar('inatividade volta ao início da sala', async () => {
     await p.locator('.t-aviso').waitFor({ state: 'detached', timeout: 6000 });
-    confere(await p.getByRole('tab', { name: /História/ }).getAttribute('aria-selected') === 'true', 'não voltou para História');
+    confere(await p.getByRole('tab', { name: /Apresentação/ }).getAttribute('aria-selected') === 'true', 'não voltou para a Apresentação');
     confere((await p.locator('.m-ov').count()) === 0, 'overlay continuou aberto');
-    confere((await p.locator('.tt-marco.is-ativo .tt-marco__ano').innerText()) === '1988', 'destaque inicial da sala 2 é 1988');
   });
 
   // ---------------------------------------------------------------- Voltar do Android
@@ -155,12 +173,13 @@ for (const [w, h] of TELAS) {
     await p.goBack();
     await p.goBack();
     confere(p.url().startsWith(BASE), `saiu do app: ${p.url()}`);
-    confere((await p.locator('.tt-cab__n').innerText()) === 'Sala 3 de 5', 'perdeu a sala');
+    confere((await p.locator('.tt-cab__n').innerText()) === 'Sala 03 de 06', 'perdeu a sala');
   });
 
-  // ---------------------------------------------------------------- sala 5
+  // ---------------------------------------------------------------- Sala 06 · aba Colegas
   await verificar('busca "joao sil" encontra João Pedro da Silva Sales', async () => {
-    await abrir(p, 'sala=5');
+    await abrir(p, 'sala=6');
+    await p.getByRole('tab', { name: /Colegas/ }).click();
     await p.locator('.tt-pc').first().waitFor();
     await digitar(p, 'joao sil');
     await p.locator('.tt-rs b', { hasText: '1 pessoa com “joao sil” no nome' }).waitFor();
@@ -192,12 +211,13 @@ for (const [w, h] of TELAS) {
 
   await verificar('perfil, colega da mesma turma e volta', async () => {
     await p.locator('.tt-pc', { hasText: 'Ana Beatriz Silva Moura' }).click();
-    await p.locator('.tt-pcard__nome', { hasText: 'Ana Beatriz Silva Moura' }).waitFor();
-    confere((await p.locator('.tt-prof__fotos .m-pol').count()) === 3, '3 fotos aprovadas');
+    await p.locator('.tt-pid__nome', { hasText: 'Ana Beatriz Silva Moura' }).waitFor();
+    confere((await p.locator('.tt-pgeral .m-pol').count()) === 3, '3 fotos aprovadas');
     confere((await p.locator('.tt-pcard').innerText()).includes('instagram.com/anabeatriz.moura'), 'rede social');
     await foto('perfil');
+    await p.getByRole('tab', { name: 'Colegas' }).last().click();
     await p.locator('.tt-mate', { hasText: 'Juliana Pinheiro' }).click();
-    await p.locator('.tt-pcard__nome', { hasText: 'Juliana Silva Pinheiro' }).waitFor();
+    await p.locator('.tt-pid__nome', { hasText: 'Juliana Silva Pinheiro' }).waitFor();
     await p.getByRole('button', { name: 'Voltar à busca' }).click();
     await p.locator('input[type=search]').waitFor();
   });
@@ -210,7 +230,7 @@ for (const [w, h] of TELAS) {
     confere(p.url().startsWith(BASE), 'saiu do app');
   });
 
-  await verificar('QR Code do check-in na sala 5', async () => {
+  await verificar('QR Code do check-in na Sala 06', async () => {
     await p.getByRole('button', { name: 'Ainda não fez check-in?' }).click();
     const qr = p.locator('svg.m-qr');
     await qr.waitFor();
@@ -221,7 +241,7 @@ for (const [w, h] of TELAS) {
     await p.getByRole('button', { name: 'Fechar' }).click();
   });
 
-  await verificar('check-in pelo celular aparece na sala 5 sem recarregar', async () => {
+  await verificar('check-in pelo celular aparece na Sala 06 sem recarregar', async () => {
     // só letras: o servidor descarta palavras sem letra no nome
     const nome = `Teste E2E ${w === 1600 ? 'Palco' : 'Tela'} ${Date.now().toString(36).replace(/\d/g, '')}`;
     const cel = await novaPagina(await navegador.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }), 'celular');
@@ -238,12 +258,13 @@ for (const [w, h] of TELAS) {
     await cel.getByText(/Check-in feito, Teste!/).waitFor();
     await cel.screenshot({ path: `${CAPTURAS}${w}-checkin-celular.png` });
     await cel.context().close();
-    // a sala 5 já está aberta na busca: a lista se atualiza sozinha (~10 s)
+    // a aba Colegas já está aberta na busca: a lista se atualiza sozinha (~10 s)
     const cartao = p.locator('.tt-pc', { hasText: nome });
     await cartao.waitFor({ timeout: 15_000 });
     confere((await cartao.locator('.tt-novo').count()) === 1, 'selo NOVO');
     await cartao.click();
-    await p.locator('.tt-pcard__meta', { hasText: 'Check-in feito agora' }).waitFor();
+    await p.locator('.tt-pid__meta', { hasText: 'Check-in feito agora' }).waitFor();
+    await p.getByRole('tab', { name: 'Colegas' }).last().click();
     confere((await p.locator('.tt-mate', { hasText: 'João Sales' }).count()) === 1, 'colega da mesma turma (2007, 2º B)');
   });
 
