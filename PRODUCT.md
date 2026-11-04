@@ -6,7 +6,7 @@
 
 web
 
-Cinco totens touchscreen Android (um por sala), em navegador quiosque e tela cheia, rodando o mesmo PWA;
+Seis totens touchscreen Android (um por espaço), em navegador quiosque e tela cheia, rodando o mesmo PWA;
 cada um abre em `/?sala=N` e mostra só a própria sala. O check-in é uma página web comum, aberta no
 celular do visitante pelo QR Code da placa de entrada.
 
@@ -22,26 +22,26 @@ instrução. No check-in, cada um usa o próprio celular, em pé, na entrada.
 
 ## Product Purpose
 
-O **Memorial Dom Bosco Maria Izabel Rodrigues** conta a história da escola (fundada em 1958) em cinco
-salas: Educação, Troféus, Artes, Professoras e Fechamento. As salas 1 a 4 têm linha do tempo, fotos por
-períodos de 5 anos e vídeos. Na sala 5, quem fez check-in na entrada é encontrado pelos colegas, pelo
-nome, pelo ano ou pela década. Dá certo quando o visitante faz o check-in em menos de um minuto, segue o
+O **Memorial Dom Bosco Maria Izabel Rodrigues** conta a história da escola (fundada em 1958) em seis
+espaços: Fundação, Diretores, Professores, Artes, Esporte e Alunos. Cada espaço tem Apresentação, linha do
+tempo por décadas, marcos, fotos por períodos de 5 anos e vídeos. Na Sala 06 (Alunos), aba Colegas, quem
+fez check-in na entrada é encontrado pelos colegas, pelo nome, pelo ano ou pela década. Dá certo quando o visitante faz o check-in em menos de um minuto, segue o
 percurso e, no fim, encontra o próprio nome e os colegas da mesma turma.
 
 ## Operating Context
 
-- **Percurso**: entrada (placa com QR Code) → salas 1 a 4 → sala 5. Cada totem mostra "Sala N de 5".
-- **Ociosidade**: depois de 90 s sem toque, aviso de 15 s; depois, o totem volta ao início da sala.
+- **Percurso**: entrada (placa com QR Code) → salas 01 a 05 → Sala 06. Cada totem mostra "Sala 0N de 06".
+- **Ociosidade**: depois de 90 s sem toque, aviso de 15 s; depois, o totem volta ao início da sala (aba Apresentação).
   O aviso não aparece com vídeo tocando.
 - **Atualização**: a equipe cadastra pelo `/admin`. Cada totem consulta a versão da própria sala e só
   troca o conteúdo no início da sala ou depois de 30 s sem toque.
-- **Rede**: salas 1 a 4 funcionam offline com a última cópia; a sala 5 precisa do servidor (a busca e os
-  check-ins novos vêm dele) e avisa quando está sem conexão.
+- **Rede**: as abas de conteúdo funcionam offline com a última cópia; a aba Colegas (Sala 06) precisa do
+  servidor (a busca e os check-ins novos vêm dele) e avisa quando está sem conexão.
 
 ## Capabilities and Constraints
 
-- **Telas do totem**: História, Fotos, Vídeos (salas 1 a 4); Busca e Perfil (sala 5); foto ampliada,
-  player, QR do check-in, aviso de inatividade e escolha de sala.
+- **Telas do totem**: Apresentação, Linha do tempo, Marcos, Fotos e Vídeos (todas as salas); Colegas, com
+  Busca e Perfil (Sala 06); foto ampliada, player, QR do check-in, aviso de inatividade e escolha de sala.
 - **Check-in**: nome completo, ano, turma, e-mail, Instagram e Facebook opcionais, até 3 fotos
   opcionais e autorização obrigatória. Mesmo e-mail + mesmo ano atualiza o cadastro.
 - **Privacidade**: e-mail nunca sai do servidor; perfil só com consentimento; fotos só depois de
@@ -56,8 +56,9 @@ percurso e, no fim, encontra o próprio nome e os colegas da mesma turma.
 ## Brand Commitments
 
 - **Nome**: Memorial Dom Bosco Maria Izabel Rodrigues ("Memorial Dom Bosco" no app instalado).
-- **Marcas**: a assinatura da fundadora (cabeçalho) e o monograma "1958" (ícone e marca d'água).
-  As cores ainda serão confirmadas com o manual da marca; estão todas em `tokens.css`.
+- **Marcas**: a assinatura da fundadora, dourada (cabeçalho branco) e o monograma "1958" (ícone e marca d'água).
+  A identidade vigente é a "Proposta B · dourado e branco gelo" (Marketing, 30/10/2026); as cores ainda
+  serão confirmadas com o manual da marca e estão todas em `tokens.css`.
 - **Tom**: acolhedor e de reencontro ("Encontre seus colegas", "Registre sua passagem").
 
 ## Evidence on Hand
@@ -69,7 +70,7 @@ percurso e, no fim, encontra o próprio nome e os colegas da mesma turma.
 ## Product Principles
 
 1. **O percurso é a interface**: cada totem diz em que sala você está e o que tocar.
-2. **O reencontro é o fim do tour**: o check-in da entrada existe para a sala 5 funcionar.
+2. **O reencontro é o fim do tour**: o check-in da entrada existe para a aba Colegas da Sala 06 funcionar.
 3. **Nunca mudar a tela debaixo do dedo**: conteúdo novo e retorno ao início só no ócio.
 4. **Só o que a pessoa autorizou**: nome, ano, turma e redes; o resto fica no servidor.
 5. **Funcionar sozinho**: sem operador, sem estado travado, com saída por toque em toda tela.

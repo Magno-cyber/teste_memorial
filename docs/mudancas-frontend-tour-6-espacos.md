@@ -1,11 +1,34 @@
 # Frontend · do totem de 5 salas ao "Tour do Memorial · 6 espaços"
 
-Branch: `feature/tour-6-espacos` · Escopo: **somente `frontend/`** (mais esta nota e um aviso no `DESIGN.md`).
+Escopo: **somente `frontend/`**, mais a documentação (`README.md`, `PRODUCT.md`, `DESIGN.md` e esta nota).
 
 ## Commits
 
 1. `feat(frontend): tour de 6 espaços …` — estrutura, telas e contrato de dados.
 2. `style(frontend): identidade "Proposta B …"` — só paleta e cabeçalho. Revertível sozinho.
+3. `docs: nota de mudanças …` — este arquivo (primeira versão).
+4. `style(frontend): cartão do perfil na cor do espaço` — pedido do Henry: o cartão (ano, turma, redes) deixou de ser
+   dourado e passou a usar a cor da Sala 06 (roxo `#6E4BA8`, em degradê), com texto branco.
+5. `fix(frontend): abas da Sala 06 não respondiam depois de abrir Colegas` — o título da busca ficava por cima da
+   barra de abas e capturava o toque; a barra ganhou `z-index: 5` (`totem.css`).
+6. `docs: README, PRODUCT e DESIGN` — atualização da documentação para os 6 espaços.
+
+## Arquivos principais
+
+| Arquivo | O que é |
+|---|---|
+| `frontend/src/dados/salas.ts` | as 6 salas (slug, nome, subtítulo, cor, tipo) e o helper `dois(n)` |
+| `frontend/src/dados/tipos.ts` | contrato da API (`Apresentacao`, `Decada`, `Acontecimento`, campos novos de `Marco`) |
+| `frontend/src/dados/regras.ts` | `decadasDaSala`, `apresentacaoDaSala`, `nomeDaDecada`, `marcosOrdenados` (com testes) |
+| `frontend/src/dados/demo.ts` + `exemplo.json` | conteúdo de demonstração do tour novo |
+| `frontend/src/telas/SalaConteudo.tsx` | tela única dos 6 espaços (abas, overlays e a aba Colegas) |
+| `frontend/src/telas/Apresentacao.tsx`, `LinhaDoTempo.tsx`, `Marcos.tsx` | as telas novas |
+| `frontend/src/telas/Colegas.tsx`, `Busca.tsx`, `Perfil.tsx` | aba Colegas (antes `SalaFechamento`), busca e perfil em formato de rede social |
+| `frontend/src/telas/AbasSala.tsx`, `estado.ts` | abas em pílula e estado do totem (`linha`, `marcoAberto`, `perfilAba`) |
+| `frontend/src/componentes/FotoEpoca.tsx` | foto com tom sépia e moldura |
+| `frontend/src/estilos/tokens.css`, `contraste.test.ts` | paleta Proposta B e teste de contraste (inclui Sala 06) |
+
+Removidos: `telas/Historia.tsx` e `telas/SalaFechamento.tsx`. Novo ícone `home` em `componentes/Icone.tsx`.
 
 ## O que mudou na tela
 

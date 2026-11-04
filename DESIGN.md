@@ -1,27 +1,29 @@
 ---
 name: Memorial Dom Bosco
-description: Totens das salas do Memorial Dom Bosco Maria Izabel Rodrigues, em grafite, dourado e marfim, com a assinatura da fundadora.
+description: Totens dos espaços do Memorial Dom Bosco Maria Izabel Rodrigues, em dourado e branco gelo (Proposta B), com a assinatura dourada da fundadora.
 colors:
-  grafite: "#2B2A28"
-  grafite-2: "#3D3B38"
+  grafite: "#23211D"
+  grafite-2: "#3A3732"
   grafite-3: "#1F1E1C"
-  dourado: "#B08D57"
-  dourado-claro: "#D9C39B"
-  dourado-texto: "#7C6034"
-  dourado-fundo: "#EFE6D6"
-  marfim: "#F3F0EA"
-  areia: "#E9E4DA"
-  cartao: "#FBF9F5"
-  linha: "#E2DCD1"
-  suave: "#5E5A53"
-  suave-2: "#67635D"
+  dourado: "#C29A45"
+  dourado-claro: "#E9D3A0"
+  dourado-texto: "#855F10"
+  dourado-fundo: "#F4E9CF"
+  marfim: "#F6F8F8"
+  areia: "#EEF2F1"
+  cartao: "#FFFFFF"
+  linha: "#E0E6E5"
+  branco: "#FFFFFF"
+  suave: "#5A5F62"
+  suave-2: "#656A6D"
   suave-escuro: "#CFC8BA"
   erro: "#9A3B2E"
-  sala-1: "#4A4844"
-  sala-2: "#84673A"
-  sala-3: "#8E5444"
-  sala-4: "#5A6650"
-  sala-5: "#2B2A28"
+  sala-1: "#8E6918"
+  sala-2: "#2F62B0"
+  sala-3: "#17805F"
+  sala-4: "#C43F60"
+  sala-5: "#B85A0C"
+  sala-6: "#6E4BA8"
 typography:
   titulo:
     fontFamily: "Cormorant Garamond, Georgia, serif"
@@ -58,7 +60,7 @@ spacing:
 components:
   aba-ativa:
     backgroundColor: "{colors.sala-N}"
-    textColor: "{colors.marfim}"
+    textColor: "{colors.branco}"
     rounded: "{rounded.pilula}"
     height: "56px"
   chip-ativo:
@@ -72,18 +74,17 @@ components:
     rounded: "{rounded.cartao}"
 ---
 
-> **Atenção (30/10/2026):** o frontend usa a identidade "Proposta B · dourado e branco gelo". Os valores vigentes
-> estão em `frontend/src/estilos/tokens.css` (e os contrastes, em `contraste.test.ts`). O front matter e as tabelas
-> deste arquivo ainda descrevem a paleta anterior (grafite e marfim quente) e precisam ser atualizados.
-
 # Design System: Memorial Dom Bosco
 
 ## Overview
 
-**Norte criativo: "O selo da fundadora".** Cada totem é uma página do mesmo álbum: cabeçalho grafite
-com a assinatura de Maria Izabel Rodrigues, papel marfim, filetes e pontos dourados tirados do
-monograma "1958". A cor de cada sala marca o número da sala, a aba ativa e o destaque, sem disputar com
-o dourado.
+**Norte criativo: "O selo da fundadora".** Cada totem é uma página do mesmo álbum: cabeçalho branco
+com a assinatura dourada de Maria Izabel Rodrigues e uma borda de 3 px na cor do espaço, papel branco
+gelo, filetes e pontos dourados tirados do monograma "1958". A cor de cada espaço marca o selo, a aba
+ativa, o ano, o cartão de marco aberto e a capa do perfil, sem disputar com o dourado.
+
+**Identidade vigente: "Proposta B · dourado e branco gelo"** (Marketing, 30/10/2026). A identidade
+anterior (grafite e marfim quente) pode ser recuperada revertendo o commit "identidade visual".
 
 Referência de composição: o protótipo `docs/referencia/tour-memorial-dom-bosco.html` (bloco
 `/* totem (1600x900) */`). A composição é a mesma; os tamanhos foram aumentados para leitura de pé, a
@@ -92,27 +93,31 @@ Referência de composição: o protótipo `docs/referencia/tour-memorial-dom-bos
 - **Palco lógico 1600 × 900 (16:9)**, escalado para a tela real e centralizado. Em telas 16:10 sobram
   faixas `--grafite-3` em cima e embaixo. Nada rola na página; só listas internas (períodos, resultados,
   vídeos) rolam, com barra visível.
-- **Estrutura comum**: cabeçalho 78 px · área principal (margens de 52 px) · rodapé 46 px com a dica de
+- **Estrutura comum**: cabeçalho 78 px (+ borda de 3 px) · área principal (margens de 52 px) · rodapé 46 px com a dica de
   uso da aba e, à direita, o selo "Conteúdo de exemplo · Memorial Dom Bosco" quando a sala tiver
   conteúdo demonstrativo.
-- **Duas atmosferas**: o marfim para navegar e o grafite (95%) para overlays (foto ampliada, player,
+- **Duas atmosferas**: o branco gelo para navegar e o grafite (95%) para overlays (foto ampliada, player,
   QR do check-in, aviso de inatividade).
 
 ## Cores
 
 Os tokens ficam em `frontend/src/estilos/tokens.css`; para aplicar o manual da marca, troque só ali.
 
-- **Grafite** (`#2B2A28`): cabeçalho, cartão do perfil, chips ativos, texto principal.
-- **Dourado** (`#B08D57`): **só ornamento** sobre fundo claro (filetes, pontos, anéis, bordas) e texto
-  sobre grafite. Sobre o marfim ele tem 2,72:1 e nunca escreve.
-- **Dourado-texto** (`#7C6034`): todo texto dourado sobre fundo claro (eyebrows, rótulos em caixa-alta,
-  tipo do vídeo, contagem). O protótipo usava `#8A6B3A` (4,35:1).
-- **Dourado-claro** (`#D9C39B`): rótulos e texto dourado sobre grafite.
-- **Suave** / **Suave-2** (`#5E5A53` / `#67635D`): textos de apoio. O protótipo usava `#77736C` (4,15:1).
-- **Cor da sala**: 1 `#4A4844`, 2 `#84673A`, 3 `#8E5444` (terracota), 4 `#5A6650` (verde-oliva),
-  5 `#2B2A28`. Entra no selo do cabeçalho, na aba ativa, no anel e no ano do marco em destaque, na borda
-  do cartão em destaque e no período selecionado. **A sala 2 foi escurecida** de `#A07D47` (marfim sobre
-  ela: 3,35:1) para `#84673A`, mantendo o tom.
+- **Grafite** (`#23211D`): texto principal, chips ativos, fundo dos overlays e do teclado.
+- **Dourado** (`#C29A45`): **só ornamento** sobre fundo claro (filetes, pontos, anéis, bordas, botão de
+  play) e texto sobre grafite. Sobre o branco gelo ele tem 2,46:1 e nunca escreve.
+- **Dourado-texto** (`#855F10`): todo texto dourado sobre fundo claro (eyebrows, rótulos em caixa-alta,
+  tipo do vídeo, contagem). O protótipo usava `#8C6514`, que dava 4,37:1 sobre o champanhe.
+- **Dourado-fundo / champanhe** (`#F4E9CF`): círculo de ícone e selo NOVO.
+- **Dourado-claro** (`#E9D3A0`): rótulos e texto dourado sobre grafite; início do degradê do play.
+- **Suave** / **Suave-2** (`#5A5F62` / `#656A6D`): textos de apoio. O protótipo usava `#73787B` (4,19:1).
+- **Branco gelo** (`--marfim`, `#F6F8F8`), **areia**, **cartão** (`#FFFFFF`), **linha**: superfícies.
+- **Branco** (`--branco`, `#FFFFFF`): **todo texto sobre a cor do espaço** (aba ativa, selo, ano, cartão de
+  marco aberto, cartão do perfil). Não use o branco gelo aí: sobre a Esporte ele dá 4,37:1.
+- **Cor do espaço**: 1 Fundação `#8E6918`, 2 Diretores `#2F62B0`, 3 Professores `#17805F`,
+  4 Artes `#C43F60`, 5 Esporte `#B85A0C`, 6 Alunos `#6E4BA8`. Entra no selo do cabeçalho, na borda
+  inferior do cabeçalho, na aba ativa, no ano dos marcos, no período/década selecionado, no cartão de
+  marco aberto e na capa e no cartão do perfil (degradê da cor para uma versão 40% mais escura).
 
 ### Contraste (valores finais, WCAG 2.1)
 
@@ -120,18 +125,19 @@ Medidos pelo teste `frontend/src/estilos/contraste.test.ts`, que falha se algum 
 
 | Texto | Fundo | Contraste |
 |---|---|---|
-| grafite | marfim / areia | 12,61 / 11,32 |
-| grafite-2 (abas inativas) | areia | 8,81 |
-| suave | marfim / areia | 6,03 / 5,41 |
-| suave-2 | marfim / cartão / areia | 5,25 / 5,67 / 4,71 |
-| dourado-texto | marfim / cartão / areia | 5,16 / 5,58 / 4,63 |
-| dourado-texto (selo NOVO) | dourado-fundo | 4,74 |
-| dourado | grafite / grafite-3 | 4,64 / 5,39 |
-| dourado-claro | grafite / grafite-2 | 8,35 / 6,50 |
-| suave-escuro | grafite | 8,62 |
-| marfim | sala 1 / 2 / 3 / 4 / 5 | 8,02 / 4,64 / 5,27 / 5,35 / 12,61 |
-| erro | marfim | 6,08 |
-| *dourado (só ornamento)* | *marfim* | *2,72* |
+| grafite | branco gelo / areia | 15,08 / 14,24 |
+| grafite-2 | areia | 10,50 |
+| suave | branco gelo / areia | 6,07 / 5,73 |
+| suave-2 | branco gelo / cartão / areia | 5,14 / 5,47 / 4,85 |
+| dourado-texto | branco gelo / cartão / areia | 5,41 / 5,77 / 5,11 |
+| dourado-texto (selo NOVO) | dourado-fundo | 4,78 |
+| dourado | grafite / grafite-3 | 6,12 / 6,35 |
+| dourado-claro | grafite / grafite-2 | 10,94 / 8,06 |
+| suave-escuro | grafite | 9,66 |
+| branco | sala 1 / 2 / 3 / 4 / 5 / 6 | 5,02 / 6,01 / 4,90 / 4,97 / 4,66 / 6,49 |
+| cor da sala (texto) | cartão | igual à linha acima |
+| erro | branco gelo | 6,48 |
+| *dourado (só ornamento)* | *branco gelo* | *2,46* |
 
 ## Tipografia
 
@@ -159,19 +165,34 @@ colega (60 px). Não existe hover: todo elemento tocável tem `:active` (escala,
 
 ## Componentes
 
-- **Cabeçalho** (78 px, grafite): assinatura com 46 px de altura, divisor, selo redondo com o número na
-  cor da sala, "SALA N" + nome em serif, e à direita "PERCURSO", cinco pontos e "Sala N de 5". **Os
-  pontos são indicadores, não botões**: cada totem conhece só a própria sala.
-- **Abas em pílula** (História, Fotos, Vídeos) sobre a areia; a ativa é preenchida com a cor da sala.
-- **Linha do tempo**: fio com degradê dourado, marcos alternando acima e abaixo, ponto na linha, ano em
-  serif e cartão (ícone, título, descrição de até 3 linhas). Destaque: ano maior na cor da sala, anel e
-  borda do cartão na cor da sala. 4 a 10 marcos cabem na tela; acima disso, rolagem lateral com encaixe.
+- **Cabeçalho** (78 px, branco, borda inferior de 3 px na cor do espaço): assinatura dourada com 46 px
+  de altura, divisor, selo redondo com o número de dois dígitos ("06") na cor do espaço e anel dourado,
+  "SALA 06" + nome em serif, e à direita "PERCURSO", seis pontos e "Sala 06 de 06". **Os pontos são
+  indicadores, não botões**: cada totem conhece só a própria sala.
+- **Abas em pílula** sobre a areia: Apresentação, Linha do tempo, Marcos, Fotos e Vídeos (+ **Colegas** na
+  Sala 06). A ativa é preenchida com a cor do espaço, com texto branco. A barra tem `z-index` acima do
+  conteúdo da aba Colegas (sem isso, o título da busca capturava o toque). Com o teclado virtual aberto
+  e dentro do perfil de um aluno, as abas ficam ocultas.
+- **Foto de época**: a imagem com tom sépia, moldura branca e sombra interna; sem imagem, a moldura
+  provisória (degradê quente com o ícone). Usada na Apresentação, nas décadas e nos marcos.
+- **Apresentação**: foto à esquerda (600 px) com legenda, texto à direita (título 44 px, parágrafos de
+  18 px) e três atalhos de 56 px para Linha do tempo, Marcos e Fotos.
+- **Linha do tempo**: sete décadas lado a lado sobre um fio dourado (ponto, "Anos 60", "1958 a 1969",
+  título). A década escolhida mostra um painel branco com borda superior na cor do espaço: foto, "DÉCADA
+  n DE 7", resumo, três acontecimentos com o ano em pílula e setas anterior/próxima.
+- **Marcos**: quatro cartões (foto de 214 px com o ano em pílula, ícone, título, frase curta). O toque
+  abre o texto explicativo e o cartão ganha a cor do espaço com texto branco; só um abre por vez. Acima
+  de 4 marcos, rolagem lateral com encaixe.
 - **Polaroide**: moldura branca, rotação de ±0,6°, legenda "**ano** *legenda*". Sem imagem, uma moldura
   provisória (degradê quente com o ícone da sala).
 - **Overlays**: grafite a 95%, botão Fechar em pílula dourada no canto, legenda "ANO · FOTO i DE n".
-  O player tem tocar/pausar, barra de progresso, tempo, som (mudo e volume) e legenda WebVTT.
-- **Cartão de perfil** (400 px): grafite, moldura dourada interna, monograma a 5% ao fundo, anel dourado
-  com o avatar (foto ou iniciais em serif), blocos ANO EM QUE ESTUDOU e TURMA, redes informadas.
+  O player tem tocar/pausar, barra de progresso, tempo, som (mudo e volume) e legenda WebVTT. O botão de
+  play dos vídeos é um círculo com degradê dourado.
+- **Perfil do aluno** (rede social): capa de 176 px na cor do espaço (degradê, prédio da escola em traço
+  e a tag "Turma X · ano"), botão **Voltar à busca** branco sobre a capa, avatar de 152 px sobreposto,
+  nome em serif 44 px, pilha de colegas e quatro abas (Visão geral, Fotos, Colegas, Sobre). O **cartão**
+  de 400 px (ANO EM QUE ESTUDOU, TURMA e redes) usa o degradê da cor do espaço com texto branco, moldura
+  interna translúcida e o monograma branco a 12%.
 - **Teclado virtual**: grafite, fixo embaixo, letras, espaço, Apagar, Limpar e Pronto. Com ele aberto,
   o título recolhe para os resultados subirem.
 
@@ -179,9 +200,10 @@ colega (60 px). Não existe hover: todo elemento tocável tem `:active` (escala,
 
 Em `frontend/src/assets/memorial/`, extraídas do protótipo:
 
-- `assinatura.png` (900 × 229, **versão clara**): cabeçalho de todos os totens e do check-in.
-- `monograma.png` (520 × 537, dourado): ícones do PWA (sobre `#1F1E1C`), aviso de inatividade e marca
-  d'água do perfil (5%).
+- `assinatura-dourada.png` (900 × 229, **versão dourada**): cabeçalho branco dos totens.
+- `assinatura.png` (900 × 229, **versão clara**): fundos escuros (check-in, escolha de sala).
+- `monograma.png` (520 × 537, dourado): ícones do PWA (sobre `#1F1E1C`) e aviso de inatividade.
+- `monograma-branco.png` (520 × 537): marca d'água do cartão do perfil.
 - `icone.png` (120 × 124, **versão escura**): selo do rodapé.
 - `placa-checkin.jpg`: a placa de entrada do protótipo, como referência (o QR de verdade vem do admin).
 
@@ -193,9 +215,10 @@ deslocamento. `prefers-reduced-motion` desliga tudo.
 ## Do's and Don'ts
 
 - **Do** usar `--dourado-texto` em todo texto dourado sobre fundo claro.
+- **Do** usar `--branco` para todo texto sobre a cor do espaço.
 - **Do** manter alvos de 56 px e texto corrido de 18 px no palco.
 - **Do** mostrar o selo "Conteúdo de exemplo" enquanto a sala tiver conteúdo demonstrativo.
-- **Don't** escrever com `--dourado` sobre marfim, areia ou cartão.
-- **Don't** pôr texto marfim sobre a cor original da sala 2 (`#A07D47`).
+- **Don't** escrever com `--dourado` sobre branco gelo, areia ou cartão.
+- **Don't** pôr texto branco gelo (`--marfim`) sobre a cor do espaço: na Esporte dá 4,37:1.
 - **Don't** carregar fontes, ícones ou scripts de CDN: tudo precisa funcionar offline.
 - **Don't** mostrar e-mail de ex-aluno em lugar nenhum da interface.
