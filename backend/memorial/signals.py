@@ -4,11 +4,16 @@ Apagar um registro (no admin ou em lote) remove do disco todas as versões do ar
 também para o pedido de remoção de um ex-aluno (LGPD): o perfil, a foto e as fotos enviadas somem.
 """
 
+from django.contrib.auth import get_user_model
+from django.contrib.auth.signals import user_logged_in, user_logged_out, user_login_failed
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
 from .media import capturar_quadro, ler_metadados_video
-from .models import Aluno, Foto, FotoAluno, Video
+from .models import (
+    Acontecimento, Aluno, Apresentacao, ConfiguracaoMemorial, Decada, Foto, FotoAluno, Marco, Registro, Sala, Video,
+)
+from .registro import SISTEMA, desligado, registrar, texto_de_busca
 
 
 def _apagar(*campos):
@@ -34,6 +39,23 @@ def foto_limpar_antigas(sender, instance, **kwargs):
 @receiver(post_delete, sender=Foto)
 def foto_apagar_arquivos(sender, instance, **kwargs):
     _apagar(instance.imagem, instance.exibicao, instance.miniatura)
+
+
+# ---------------------------------------------------------------- fotos de época
+
+def _epoca_limpar_antiga(sender, instance, **kwargs):
+    antiga = _anterior(sender, instance)
+    if antiga and antiga.foto.name and antiga.foto.name != instance.foto.name:
+        _apagar(antiga.foto)
+
+
+def _epoca_apagar(sender, instance, **kwargs):
+    _apagar(instance.foto)
+
+
+for _modelo in (Apresentacao, Decada, Marco):
+    pre_save.connect(_epoca_limpar_antiga, sender=_modelo)
+    post_delete.connect(_epoca_apagar, sender=_modelo)
 
 
 # ---------------------------------------------------------------- vídeos
@@ -97,3 +119,78 @@ def aluno_apagar_foto(sender, instance, **kwargs):
 @receiver(post_delete, sender=FotoAluno)
 def foto_aluno_apagar_arquivos(sender, instance, **kwargs):
     _apagar(instance.imagem, instance.miniatura)
+
+
+# ---------------------------------------------------------------- entradas e saídas
+
+def _rotulo(instance):
+    return str(instance._meta.verbose_name).capitalize()
+
+
+def _cadastro_salvo(sender, instance, created, raw=False, update_fields=None, **kwargs):
+    # O login grava last_login no usuário: isso já vira um registro de login, não de cadastro.
+    if raw or desligado() or (update_fields and set(update_fields) == {"last_login"}):
+        return
+    tipo = Registro.Tipo.CADASTRO_CRIADO if created else Registro.Tipo.CADASTRO_ALTERADO
+    registrar(tipo, f"{_rotulo(instance)}: {instance}")
+
+
+def _cadastro_removido(sender, instance, **kwargs):
+    registrar(Registro.Tipo.CADASTRO_REMOVIDO, f"{_rotulo(instance)}: {instance}")
+
+
+for _modelo in (Sala, Apresentacao, Decada, Acontecimento, Marco, Foto, Video, ConfiguracaoMemorial, get_user_model()):
+    post_save.connect(_cadastro_salvo, sender=_modelo, dispatch_uid=f"registro_salvo_{_modelo.__name__}")
+    post_delete.connect(_cadastro_removido, sender=_modelo, dispatch_uid=f"registro_removido_{_modelo.__name__}")
+
+
+@receiver(post_save, sender=Aluno)
+def aluno_registrar(sender, instance, created, raw=False, **kwargs):
+    if raw or desligado():
+        return
+    tipo = Registro.Tipo.CADASTRO_CRIADO if created else Registro.Tipo.CADASTRO_ALTERADO
+    registrar(tipo, f"Ex-aluno: {instance}", aluno_ref=instance.pk)
+
+
+@receiver(post_save, sender=FotoAluno)
+def foto_aluno_registrar(sender, instance, created, raw=False, **kwargs):
+    if raw or desligado():
+        return
+    registrar(
+        Registro.Tipo.CADASTRO_CRIADO if created else Registro.Tipo.CADASTRO_ALTERADO,
+        f"Foto de ex-aluno ({instance.get_status_display().lower()}): {instance.aluno.nome}", aluno_ref=instance.aluno_id,
+    )
+
+
+@receiver(post_delete, sender=FotoAluno)
+def foto_aluno_registrar_remocao(sender, instance, **kwargs):
+    registrar(
+        Registro.Tipo.CADASTRO_REMOVIDO, f"Foto de ex-aluno nº {instance.aluno_id} removida",
+        aluno_ref=instance.aluno_id,
+    )
+
+
+@receiver(post_delete, sender=Aluno)
+def aluno_apagar_dos_registros(sender, instance, **kwargs):
+    """Pedido de remoção (LGPD): o nome sai dos registros antigos; fica só que o fato aconteceu."""
+    texto = f"Ex-aluno nº {instance.pk} (dados pessoais removidos)"
+    for registro in Registro.objects.filter(aluno_ref=instance.pk).only("pk", "autor"):
+        Registro.objects.filter(pk=registro.pk).update(descricao=texto, busca=texto_de_busca(texto, registro.autor))
+    registrar(Registro.Tipo.ALUNO_REMOVIDO, f"Ex-aluno nº {instance.pk} removido", aluno_ref=instance.pk)
+
+
+@receiver(user_logged_in)
+def login_registrar(sender, request, user, **kwargs):
+    registrar(Registro.Tipo.LOGIN, f"{user.get_username()} entrou", autor=user.get_username())
+
+
+@receiver(user_logged_out)
+def logout_registrar(sender, request, user, **kwargs):
+    if user is not None:
+        registrar(Registro.Tipo.LOGOUT, f"{user.get_username()} saiu", autor=user.get_username())
+
+
+@receiver(user_login_failed)
+def login_recusado_registrar(sender, credentials, **kwargs):
+    usuario = (credentials.get("username") or "")[:60]
+    registrar(Registro.Tipo.LOGIN_RECUSADO, f"Tentativa de login recusada: {usuario}", autor=SISTEMA)

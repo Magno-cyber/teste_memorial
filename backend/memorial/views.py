@@ -19,10 +19,12 @@ from rest_framework.settings import api_settings
 from rest_framework.throttling import SimpleRateThrottle
 
 from .media import ImagemInvalida, validar_imagem_enviada
-from .models import Aluno, ConfiguracaoMemorial, Foto, FotoAluno, Marco, Sala, Video, normalizar
+from .models import (
+    Acontecimento, Aluno, Apresentacao, ConfiguracaoMemorial, Decada, Foto, FotoAluno, Marco, Sala, Video, normalizar,
+)
 from .serializers import (
-    CheckinSerializer, montar_aluno_perfil, montar_aluno_resumo, montar_config, montar_config_checkin,
-    montar_foto, montar_marco, montar_sala, montar_video, registrar_checkin,
+    CheckinSerializer, montar_aluno_perfil, montar_aluno_resumo, montar_apresentacao, montar_config,
+    montar_config_checkin, montar_decada, montar_foto, montar_marco, montar_sala, montar_video, registrar_checkin,
 )
 
 POR_PAGINA = 12
@@ -37,7 +39,7 @@ def _sala_ativa(numero):
 
 
 def alunos_visiveis():
-    """Só quem está aprovado e deu consentimento aparece na sala 5."""
+    """Só quem está aprovado e deu consentimento aparece na Sala 06."""
     return Aluno.objects.filter(status=Aluno.Status.APROVADO, consentimento=True)
 
 
@@ -48,8 +50,11 @@ def calcular_versao(sala):
     """
     config = ConfiguracaoMemorial.atual()
     partes = [f"sala:{sala.pk}:{sala.atualizado_em.isoformat()}", f"config:{config.atualizado_em.isoformat()}"]
-    for modelo in (Marco, Foto, Video):
-        agg = modelo.objects.filter(sala=sala).aggregate(n=Count("id"), m=Max("atualizado_em"))
+    for modelo, filtro in (
+        (Apresentacao, {"sala": sala}), (Decada, {"sala": sala}), (Acontecimento, {"decada__sala": sala}),
+        (Marco, {"sala": sala}), (Foto, {"sala": sala}), (Video, {"sala": sala}),
+    ):
+        agg = modelo.objects.filter(**filtro).aggregate(n=Count("id"), m=Max("atualizado_em"))
         partes.append(f"{modelo.__name__}:{agg['n']}:{agg['m']}")
     if sala.tipo == Sala.Tipo.FECHAMENTO:
         partes.append(f"demo:{Aluno.objects.filter(demonstrativo=True).count()}")
@@ -63,15 +68,20 @@ def sala(request, numero):
     marcos = list(Marco.objects.filter(sala=s, publicado=True))
     fotos = list(Foto.objects.filter(sala=s, publicado=True))
     videos = list(Video.objects.filter(sala=s, publicado=True))
+    apresentacao = Apresentacao.objects.filter(sala=s, publicado=True).first()
+    decadas = list(Decada.objects.filter(sala=s, publicado=True).prefetch_related("acontecimentos"))
+    demonstrativo = any(x.demonstrativo for x in (*marcos, *fotos, *videos, *decadas)) or bool(
+        apresentacao and apresentacao.demonstrativo
+    )
     if s.tipo == Sala.Tipo.FECHAMENTO:
-        demonstrativo = alunos_visiveis().filter(demonstrativo=True).exists()
-    else:
-        demonstrativo = any(x.demonstrativo for x in (*marcos, *fotos, *videos))
+        demonstrativo = demonstrativo or alunos_visiveis().filter(demonstrativo=True).exists()
     return Response({
         "versao": calcular_versao(s),
         "config": montar_config(ConfiguracaoMemorial.atual()),
         "sala": montar_sala(s),
         "demonstrativo": demonstrativo,
+        "apresentacao": montar_apresentacao(apresentacao) if apresentacao else None,
+        "decadas": [montar_decada(d) for d in decadas],
         "marcos": [montar_marco(m) for m in marcos],
         "fotos": [montar_foto(f) for f in fotos],
         "videos": [montar_video(v) for v in videos],
@@ -87,7 +97,7 @@ def versao(request):
     return Response({"versao": calcular_versao(_sala_ativa(numero))}, headers=SEM_CACHE)
 
 
-# ---------------------------------------------------------------- sala 5
+# ---------------------------------------------------------------- Sala 06
 
 def _inteiro(valor, padrao=None):
     try:

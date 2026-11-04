@@ -12,11 +12,6 @@ celular** do visitante. Quem faz o check-in na entrada pode ser encontrado pelos
 | 05 | Esporte | idem |
 | 06 | Alunos | as mesmas 5 abas **e** a aba **Colegas**: busca de ex-alunos por nome, ano ou década, e o perfil de cada pessoa |
 
-> **Em andamento (frontend × backend):** o frontend já está nos 6 espaços (tour "Proposta B", 30/10/2026).
-> O backend ainda precisa criar as salas 1 a 6 e mandar `apresentacao`, `decadas` e os campos novos dos
-> marcos. O contrato está em `docs/mudancas-frontend-tour-6-espacos.md`. Enquanto isso, o modo demonstração
-> (abaixo) mostra tudo funcionando.
-
 - **Frontend** (`frontend/`): React + Vite + TypeScript, PWA para funcionar offline. Duas páginas:
   o totem (`/`) e o check-in (`/checkin`). Regras visuais em `DESIGN.md`, produto em `PRODUCT.md`,
   tokens em `frontend/src/estilos/tokens.css`, marcas em `frontend/src/assets/memorial/`.
@@ -28,7 +23,7 @@ celular** do visitante. Quem faz o check-in na entrada pode ser encontrado pelos
 nginx :8080 ──┬── /, /checkin   → apps (build do frontend/, embutido na imagem)
               ├── /media/       → volume "media" (fotos, vídeos, fotos de ex-alunos)
               ├── /static/      → volume "static" (CSS do admin)
-              └── /api, /admin  → backend (gunicorn :8000) → db (postgres)
+              └── /api, /admin, /administracao → backend (gunicorn :8000) → db (postgres)
 ```
 
 ## Subir
@@ -42,6 +37,7 @@ docker compose exec backend python manage.py carregar_exemplo   # opcional: cont
 - Totens: `http://<servidor>:8080/?sala=1` … `?sala=6`
 - Check-in: `http://<servidor>:8080/checkin` (é o endereço do QR Code)
 - Admin: `http://<servidor>:8080/admin` (usuário do `.env`)
+- Painel da administração: `http://<servidor>:8080/administracao/` (entradas e saídas, ver abaixo)
 
 ### Configurar cada totem
 
@@ -60,13 +56,10 @@ pelo celular do visitante (rede da escola com Wi-Fi aberto, ou um domínio públ
 
 ## Conteúdo de exemplo
 
-> **Atenção:** o `carregar_exemplo` do backend ainda carrega o conteúdo do protótipo **antigo** (5 salas).
-> O conteúdo do tour de 6 espaços está hoje só no frontend (`frontend/src/dados/exemplo.json`, modo demo).
-> Quem atualizar o backend pode usá-lo como base do novo `tour.json`.
-
-`carregar_exemplo` carrega o conteúdo do protótipo antigo (extraído por `scripts/extrair_exemplo.py` para
-`backend/memorial/exemplo/tour.json`): 8 marcos por sala, fotos de exemplo em todos os períodos
-(sem imagem real: o totem mostra uma moldura provisória), 5 vídeos curtos por sala (precisa de ffmpeg,
+`carregar_exemplo` carrega o conteúdo do tour (`backend/memorial/exemplo/tour.json`, igual ao
+`frontend/src/dados/exemplo.json` do modo demo; mude os dois juntos e não rode `scripts/extrair_exemplo.py`,
+que ainda lê o protótipo antigo). Em cada espaço: apresentação, 7 décadas, 4 marcos, fotos de exemplo em todos os
+períodos (sem imagem real: o totem mostra uma moldura provisória) e vídeos curtos (precisa de ffmpeg,
 que já vem na imagem) e 22 ex-alunos fictícios. Tudo fica marcado como **demonstrativo** e o rodapé
 do totem mostra "Conteúdo de exemplo" enquanto a sala tiver algum item assim.
 
@@ -78,17 +71,36 @@ do totem mostra "Conteúdo de exemplo" enquanto a sala tiver algum item assim.
 
 | Onde | O que fazer |
 |---|---|
-| **Salas** | nome, título, subtítulo e cor de cada sala; marcos e vídeos na própria página; **Adicionar fotos** envia várias de uma vez, todas com o ano informado |
-| **Marcos** | ano, título, descrição curta, ícone e **destaque inicial** (um por sala) |
+| **Salas** | nome, título, subtítulo e cor de cada sala; apresentação, décadas, marcos e vídeos na própria página (também na Sala 06); **Adicionar fotos** envia várias de uma vez, todas com o ano informado |
+| **Apresentações** | título, texto (parágrafos separados por linha em branco), foto de época, legenda e ícone; uma por sala |
+| **Décadas** | rótulo, período, título, resumo, ícone e foto; os **acontecimentos** (três por década) ficam na página da década |
+| **Marcos** | ano, título, descrição curta, texto explicativo, foto de época, ícone e **destaque inicial** (um por sala) |
 | **Fotos** | imagem, ano (define o período de 5 anos), legenda (até 140), crédito, texto alternativo |
 | **Vídeos** | arquivo, capa (automática se vazia), tipo, **destaque** (um por sala), legenda WebVTT opcional |
 | **Ex-alunos** | filtros por status e ano; ações **Aprovar** e **Ocultar**; o e-mail só aparece aqui |
 | **Fotos de ex-alunos** | chegam pelo check-in como *pendentes*; aprove ou recuse em lote |
+| **Entradas e saídas** | o registro do sistema, só leitura; o painel completo fica em `/administracao/` |
 | **Configuração do memorial** | tempos dos totens, som dos vídeos, aprovação de perfis, termo de consentimento, QR Code |
 
 No upload, como antes: fotos viram duas versões JPEG (`exibicao` 2560 px e `miniatura` 480 px, EXIF
 corrigido e removido); vídeos têm duração e codec lidos pelo ffprobe e capa capturada pelo ffmpeg;
 apagar um registro apaga os arquivos do disco.
+
+## Painel da administração: entradas e saídas
+
+`/administracao/` mostra tudo que entrou e saiu do sistema, com busca, filtros por tipo e data, e exportação em CSV.
+É só leitura, e ninguém edita nem apaga os registros (nem pelo `/admin`, em **Entradas e saídas**).
+
+| Direção | O que conta |
+|---|---|
+| Entrada | check-in novo ou atualizado, foto enviada, cadastro criado ou alterado (com quem fez), login da equipe, login recusado |
+| Saída | cadastro removido, ex-aluno removido, exportação de dados, logout da equipe |
+
+**Dar acesso a alguém:** em Admin › Usuários, crie o usuário, marque **Membro da equipe** e inclua no grupo
+**Administrativo** (criado sozinho pelas migrações; só permite ver o registro, não alterar conteúdo). O login é o do admin.
+
+**Limites:** o conteúdo de exemplo (`carregar_exemplo`) não entra no registro. Do que aconteceu antes da migração `0012`, só
+check-ins e fotos foram trazidos. Não existe check-out de visitantes: a saída de uma pessoa do prédio não é registrada.
 
 ## API (`/api/memorial/`)
 
@@ -118,6 +130,8 @@ Os dados da Sala 06 (aba Colegas) são de pessoas reais:
 - **fotos enviadas só aparecem depois de aprovadas** pela equipe;
 - **remoção**: apagar o ex-aluno no admin apaga o perfil, a foto e as fotos enviadas (arquivos inclusos).
   Os totens deixam de mostrar a pessoa na hora; as fotos guardadas no cache do totem expiram em até 1 dia.
+  O nome também sai do registro de entradas e saídas, que fica só com "Ex-aluno nº N (dados pessoais removidos)";
+- o **registro de entradas e saídas nunca guarda e-mail nem IP**. O CSV exportado traz nomes, e cada exportação fica registrada.
 
 > **Atenção:** o texto do termo de consentimento que vem pronto é um ponto de partida. Ele precisa ser
 > validado pela escola (encarregado de dados / jurídico) antes do uso com o público. Ao mudar o texto,
@@ -218,6 +232,12 @@ docker compose up -d --build      # aplica as migrações 0007 a 0009
 
 Os arquivos antigos de `/media` (fotos, vídeos, páginas de documento) ficam no volume sem uso; apague
 `fotos/`, `videos/` e `documentos/` do volume `media` depois de conferir o backup, se quiser liberar espaço.
+
+## Atualizando das 5 salas para os 6 espaços
+
+A migração `0011` renumera as salas, e o conteúdo já cadastrado vai junto: 1 Educação → 1 Fundação, 2 Troféus → 5 Esporte,
+3 Artes → 4 Artes, 4 Professoras → 3 Professores, 5 Fechamento → 6 Alunos; a 2 Diretores é nova. Nome, título, subtítulo e cor
+são substituídos. Faça o backup antes e **confira o `?sala=N` de cada totem**: os que estavam em 2 a 5 passam a mostrar outro espaço.
 
 ## Backup
 

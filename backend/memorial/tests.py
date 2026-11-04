@@ -9,6 +9,7 @@ import tempfile
 from datetime import timedelta
 from io import BytesIO
 
+from django.contrib.auth.models import Group, User
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
@@ -16,7 +17,13 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from PIL import Image
 
-from .models import Aluno, ConfiguracaoMemorial, Foto, FotoAluno, Marco, Sala, chave_turma, normalizar
+from .registro import registrar
+
+from .administracao import _celula
+from .models import (
+    Acontecimento, Aluno, Apresentacao, ConfiguracaoMemorial, Decada, Foto, FotoAluno, Marco, Registro, Sala, Video,
+    chave_turma, normalizar,
+)
 
 from django.conf import settings
 
@@ -274,7 +281,7 @@ class SalaTests(Base):
 
     def test_sala_traz_tudo_com_urls_relativas(self):
         r = self.get("/api/memorial/sala/1/").json()
-        self.assertEqual(r["sala"]["nome"], "Educação")
+        self.assertEqual(r["sala"]["nome"], "Fundação")
         self.assertEqual(r["config"]["anoInicial"], 1958)
         self.assertEqual([m["titulo"] for m in r["marcos"]], ["A", "B"])
         self.assertEqual([m["destaque"] for m in r["marcos"]], [False, True])  # um destaque por sala
@@ -303,17 +310,225 @@ class ExemploTests(Base):
         real = aluno("Pessoa Real Silva")
         with open("/dev/null", "w") as nada:
             call_command("carregar_exemplo", stdout=nada)
-            self.assertEqual(Marco.objects.count(), 32)
+            self.assertEqual(Marco.objects.count(), 24)  # 4 por espaço
+            self.assertEqual(Apresentacao.objects.count(), 6)
+            self.assertEqual(Decada.objects.count(), 42)  # 7 por espaço
+            self.assertEqual(Acontecimento.objects.count(), 126)
+            self.assertEqual(Registro.objects.exclude(aluno_ref=real.pk).count(), 0)  # exemplo não é movimento real
             self.assertEqual(Aluno.objects.filter(demonstrativo=True).count(), 22)
-            self.assertEqual(Marco.objects.filter(destaque=True).count(), 4)
             r = self.get("/api/memorial/sala/1/").json()
             self.assertTrue(r["demonstrativo"])
             self.assertGreater(len(r["fotos"]), 100)
+            self.assertEqual(len(r["decadas"]), 7)
+            self.assertEqual(len(r["decadas"][0]["acontecimentos"]), 3)
+            self.assertEqual(len(r["marcos"]), 4)
+            self.assertTrue(r["marcos"][0]["texto"])
+            self.assertGreater(len(r["apresentacao"]["texto"]), 0)
+            sala6 = self.get("/api/memorial/sala/6/").json()
+            self.assertEqual(sala6["sala"]["tipo"], "fechamento")
+            self.assertEqual(len(sala6["decadas"]), 7)
             self.assertEqual(self.get("/api/memorial/alunos/", q="joao sil").json()["resultados"][0]["nome"],
                              "João Pedro da Silva Sales")
             call_command("carregar_exemplo", "--remover", stdout=nada)
-        self.assertEqual(Marco.objects.count() + Foto.objects.count(), 0)
+        self.assertEqual(Marco.objects.count() + Foto.objects.count() + Decada.objects.count() + Apresentacao.objects.count(), 0)
         self.assertEqual(list(Aluno.objects.all()), [real])
+
+
+class SeisEspacosTests(Base):
+    def test_salas_iguais_as_do_frontend(self):
+        salas = list(Sala.objects.values_list("numero", "slug", "cor", "tipo"))
+        self.assertEqual(salas, [
+            (1, "fundacao", "#8E6918", "conteudo"), (2, "diretores", "#2F62B0", "conteudo"),
+            (3, "professores", "#17805F", "conteudo"), (4, "artes", "#C43F60", "conteudo"),
+            (5, "esporte", "#B85A0C", "conteudo"), (6, "alunos", "#6E4BA8", "fechamento"),
+        ])
+
+    def test_apresentacao_decadas_e_marco_no_contrato(self):
+        sala = Sala.objects.get(numero=6)
+        Apresentacao.objects.create(sala=sala, titulo="Abertura", texto="Um.\n\n  Dois.\n", foto=png(), legenda="L", icone="home")
+        d = Decada.objects.create(sala=sala, rotulo="Anos 60", periodo="1958 a 1969", titulo="T", resumo="R", icone="cap", foto=png())
+        Acontecimento.objects.create(decada=d, ano=1958, texto="Segundo", ordem=2)
+        Acontecimento.objects.create(decada=d, ano=1960, texto="Primeiro", ordem=1)
+        Decada.objects.create(sala=sala, rotulo="Oculta", periodo="x", titulo="x", publicado=False)
+        Marco.objects.create(sala=sala, ano=1958, titulo="M", descricao="d", texto="longo", foto=png())
+        r = self.get("/api/memorial/sala/6/").json()
+        self.assertEqual(r["apresentacao"]["texto"], ["Um.", "Dois."])
+        self.assertTrue(r["apresentacao"]["foto"].startswith("/media/fotos/epoca/"))  # /media/fotos/ fica no cache offline
+        self.assertEqual(len(r["decadas"]), 1)
+        self.assertEqual([e["texto"] for e in r["decadas"][0]["acontecimentos"]], ["Primeiro", "Segundo"])
+        self.assertEqual(r["marcos"][0]["texto"], "longo")
+        self.assertTrue(r["marcos"][0]["foto"].endswith(".jpg"))
+
+    def test_sala_sem_conteudo_novo_deixa_o_app_derivar(self):
+        r = self.get("/api/memorial/sala/2/").json()
+        self.assertIsNone(r["apresentacao"])
+        self.assertEqual(r["decadas"], [])
+
+    def test_versao_muda_com_decada_e_acontecimento(self):
+        sala = Sala.objects.get(numero=1)
+        versao = lambda: self.get("/api/memorial/versao/", sala=1).json()["versao"]  # noqa: E731
+        v = versao()
+        d = Decada.objects.create(sala=sala, rotulo="A", periodo="B", titulo="C")
+        v2 = versao()
+        self.assertNotEqual(v, v2)
+        e = Acontecimento.objects.create(decada=d, ano=1960, texto="x")
+        v3 = versao()
+        self.assertNotEqual(v2, v3)
+        e.delete()
+        self.assertNotEqual(v3, versao())
+
+    def test_sala_6_mostra_selo_com_conteudo_de_exemplo(self):
+        sala = Sala.objects.get(numero=6)
+        self.assertFalse(self.get("/api/memorial/sala/6/").json()["demonstrativo"])
+        Marco.objects.create(sala=sala, ano=1958, titulo="M", descricao="d", demonstrativo=True)
+        self.assertTrue(self.get("/api/memorial/sala/6/").json()["demonstrativo"])
+
+    def test_acao_publicar_muda_a_versao_do_totem(self):
+        sala = Sala.objects.get(numero=1)
+        m = Marco.objects.create(sala=sala, ano=1958, titulo="M", descricao="d")
+        v = self.get("/api/memorial/versao/", sala=1).json()["versao"]
+        admin_user = User.objects.create_superuser("chefe", password="senha-longa-1")
+        self.client.force_login(admin_user)
+        self.client.post("/admin/memorial/marco/", {
+            "action": "despublicar", "_selected_action": [m.pk],
+        })
+        self.assertFalse(Marco.objects.get(pk=m.pk).publicado)
+        self.assertNotEqual(self.get("/api/memorial/versao/", sala=1).json()["versao"], v)
+        self.assertTrue(Registro.objects.filter(descricao__startswith="Tirado do totem", autor="chefe").exists())
+
+    def test_admin_abre_com_as_abas_novas(self):
+        self.client.force_login(User.objects.create_superuser("chefe", password="senha-longa-1"))
+        sala = Sala.objects.get(numero=6)
+        pagina = self.client.get(f"/admin/memorial/sala/{sala.pk}/change/").content.decode()
+        for campo in ("apresentacao_set-0-titulo", "decada_set-TOTAL_FORMS", "marco_set-TOTAL_FORMS", "video_set-TOTAL_FORMS"):
+            self.assertIn(campo, pagina)
+        d = Decada.objects.create(sala=sala, rotulo="A", periodo="B", titulo="C")
+        self.assertIn("acontecimentos-0-texto", self.client.get(f"/admin/memorial/decada/{d.pk}/change/").content.decode())
+
+
+@override_settings(MEDIA_ROOT=MEDIA, CACHES=CACHE, REST_FRAMEWORK=limites("1000/min"))
+class RegistroTests(Base):
+    URL = "/administracao/"
+
+    def setUp(self):
+        super().setUp()
+        Registro.objects.all().delete()
+        self.chefe = User.objects.create_superuser("chefe", password="senha-longa-1")
+        Registro.objects.all().delete()
+
+    def checkin(self, **extra):
+        dados = {"nome": "Maria Conceição", "ano": "1998", "turma": "3º A", "email": EMAIL, "consentimento": "true", **extra}
+        return self.client.post("/api/memorial/checkin/", dados)
+
+    def test_checkin_novo_atualizado_e_foto(self):
+        self.assertEqual(self.checkin().status_code, 201)
+        self.assertEqual(self.checkin(fotos=png()).status_code, 201)
+        tipos = list(Registro.objects.order_by("id").values_list("tipo", "direcao", "autor"))
+        self.assertEqual(tipos, [
+            ("checkin_novo", "entrada", "Visitante"), ("checkin_atualizado", "entrada", "Visitante"),
+            ("foto_enviada", "entrada", "Visitante"),
+        ])
+
+    def test_nunca_guarda_email(self):
+        self.checkin()
+        aluno_obj = Aluno.objects.get()
+        aluno_obj.instagram = "fulano"
+        aluno_obj.save()
+        for r in Registro.objects.all():
+            self.assertNotIn(EMAIL, f"{r.descricao} {r.autor} {r.busca}")
+
+    def test_campo_isca_nao_registra(self):
+        self.checkin(site="http://robo")
+        self.assertEqual(Registro.objects.count(), 0)
+
+    def test_remover_ex_aluno_apaga_o_nome_dos_registros(self):
+        self.checkin(fotos=png())
+        aluno_obj = Aluno.objects.get()
+        pk = aluno_obj.pk
+        aluno_obj.delete()
+        for r in Registro.objects.all():
+            self.assertNotIn("Maria", r.descricao)
+            self.assertNotIn("maria", r.busca)
+        self.assertTrue(Registro.objects.filter(tipo="aluno_removido", direcao="saida", aluno_ref=pk).exists())
+
+    def test_alteracoes_da_equipe_com_autor(self):
+        self.client.force_login(self.chefe)
+        self.assertTrue(Registro.objects.filter(tipo="login", autor="chefe", direcao="entrada").exists())
+        sala = Sala.objects.get(numero=1)
+        self.client.post("/admin/memorial/marco/add/", {
+            "sala": sala.pk, "ano": 1960, "titulo": "Novo", "descricao": "d", "icone": "star", "ordem": 0, "publicado": "on",
+        })
+        self.assertTrue(Registro.objects.filter(tipo="cadastro_criado", autor="chefe", descricao__contains="Novo").exists())
+        m = Marco.objects.get()
+        self.client.post(f"/admin/memorial/marco/{m.pk}/delete/", {"post": "yes"})
+        self.assertTrue(Registro.objects.filter(tipo="cadastro_removido", direcao="saida", autor="chefe").exists())
+        self.client.post("/admin/logout/")
+        self.assertTrue(Registro.objects.filter(tipo="logout", autor="chefe", direcao="saida").exists())
+
+    def test_login_recusado(self):
+        self.client.post("/admin/login/", {"username": "chefe", "password": "errada"})
+        self.assertTrue(Registro.objects.filter(tipo="login_recusado", descricao__contains="chefe").exists())
+        self.assertNotIn("errada", str(list(Registro.objects.values_list("descricao", "busca"))))
+
+    def test_login_nao_vira_alteracao_de_usuario(self):
+        self.client.login(username="chefe", password="senha-longa-1")
+        self.assertEqual(list(Registro.objects.values_list("tipo", flat=True)), ["login"])
+
+    def test_acesso_ao_painel(self):
+        self.assertRedirects(self.client.get(self.URL), f"/admin/login/?next={self.URL}")
+        comum = User.objects.create_user("comum", password="senha-longa-1")
+        self.client.force_login(comum)
+        self.assertEqual(self.client.get(self.URL).status_code, 302)  # não é da equipe
+        equipe = User.objects.create_user("equipe", password="senha-longa-1", is_staff=True)
+        self.client.force_login(equipe)
+        self.assertEqual(self.client.get(self.URL).status_code, 403)  # é da equipe, sem a permissão
+        self.assertEqual(self.client.get(self.URL + "exportar.csv").status_code, 403)
+        equipe.groups.add(Group.objects.get(name="Administrativo"))
+        equipe = User.objects.get(pk=equipe.pk)
+        self.client.force_login(equipe)
+        self.assertEqual(self.client.get(self.URL).status_code, 200)
+
+    def test_filtros_do_painel(self):
+        self.checkin()
+        registrar(Registro.Tipo.EXPORTACAO, "Exportação antiga", autor="ana", em=timezone.now() - timedelta(days=10))
+        self.client.force_login(self.chefe)
+        def nomes(**filtros):
+            return [r.descricao for r in self.client.get(self.URL, filtros).context["pagina"].object_list]
+        self.assertIn("Check-in: Maria Conceição (1998, 3º A)", nomes(q="conceicao maria"))
+        self.assertEqual(nomes(q="ana"), ["Exportação antiga"])
+        self.assertEqual(nomes(direcao="saida", q="exportacao"), ["Exportação antiga"])
+        self.assertEqual(nomes(tipo="checkin_novo"), ["Check-in: Maria Conceição (1998, 3º A)"])
+        dez = (timezone.localdate() - timedelta(days=10)).isoformat()
+        self.assertEqual(nomes(ate=dez), ["Exportação antiga"])
+        self.assertEqual(self.client.get(self.URL, {"de": "lixo", "tipo": "lixo", "direcao": "lixo", "pagina": "lixo"}).status_code, 200)
+
+    def test_html_do_visitante_e_escapado(self):
+        registrar(Registro.Tipo.CHECKIN_NOVO, "Check-in: <script>alert(1)</script>", autor="Visitante")
+        self.client.force_login(self.chefe)
+        pagina = self.client.get(self.URL).content.decode()
+        self.assertNotIn("<script>alert", pagina)
+
+    def test_exportar_csv_fica_registrado_e_neutraliza_formula(self):
+        registrar(Registro.Tipo.CHECKIN_NOVO, "=HYPERLINK(1)", autor="Visitante")
+        self.client.force_login(self.chefe)
+        r = self.client.get(self.URL + "exportar.csv", {"tipo": "checkin_novo"})
+        corpo = r.content.decode("utf-8-sig")
+        self.assertEqual(r["Content-Type"], "text/csv; charset=utf-8")
+        self.assertIn("'=HYPERLINK(1)", corpo)
+        self.assertNotIn(";=HYPERLINK", corpo)
+        self.assertEqual(len(corpo.strip().splitlines()), 2)
+        self.assertTrue(Registro.objects.filter(tipo="exportacao", autor="chefe", direcao="saida").exists())
+        self.assertEqual(_celula("-1"), "'-1")
+        self.assertEqual(_celula("Maria"), "Maria")
+
+    def test_registro_nao_edita_nem_apaga_no_admin(self):
+        registro = registrar(Registro.Tipo.LOGIN, "x", autor="y")
+        self.client.force_login(self.chefe)
+        base = "/admin/memorial/registro/"
+        self.assertEqual(self.client.get(base).status_code, 200)
+        self.assertEqual(self.client.get(base + "add/").status_code, 403)
+        self.assertEqual(self.client.post(f"{base}{registro.pk}/delete/", {"post": "yes"}).status_code, 403)
+        self.assertEqual(self.client.post(f"{base}{registro.pk}/change/", {"descricao": "z"}).status_code, 403)
 
 
 class UtilTests(TestCase):

@@ -9,7 +9,8 @@ import re
 from django.utils import timezone
 from rest_framework import serializers
 
-from .models import Aluno, ConfiguracaoMemorial, FotoAluno, ano_atual
+from .models import Aluno, ConfiguracaoMemorial, FotoAluno, Registro, ano_atual
+from .registro import VISITANTE, registrar, sem_registro
 
 
 def _url(campo):
@@ -43,7 +44,19 @@ def montar_sala(s):
 def montar_marco(m):
     return {
         "id": m.pk, "ano": m.ano, "titulo": m.titulo, "descricao": m.descricao,
-        "icone": m.icone, "destaque": m.destaque,
+        "icone": m.icone, "destaque": m.destaque, "foto": _url(m.foto), "texto": m.texto,
+    }
+
+
+def montar_apresentacao(a):
+    return {"titulo": a.titulo, "texto": a.paragrafos, "foto": _url(a.foto), "legenda": a.legenda, "icone": a.icone}
+
+
+def montar_decada(d):
+    return {
+        "id": d.pk, "rotulo": d.rotulo, "periodo": d.periodo, "titulo": d.titulo, "resumo": d.resumo,
+        "icone": d.icone, "foto": _url(d.foto),
+        "acontecimentos": [{"ano": e.ano, "texto": e.texto} for e in d.acontecimentos.all()],
     }
 
 
@@ -62,7 +75,7 @@ def montar_video(v):
     }
 
 
-# ---------------------------------------------------------------- sala 5
+# ---------------------------------------------------------------- Sala 06
 
 def montar_aluno_resumo(a: Aluno):
     return {
@@ -194,13 +207,20 @@ def registrar_checkin(dados, imagens, config: ConfiguracaoMemorial):
         "origem": Aluno.Origem.CHECKIN,
     }
     aluno = Aluno.objects.filter(email=dados["email"], ano=dados["ano"]).first()
+    novo = aluno is None
     if aluno:
         for k, v in campos.items():
             setattr(aluno, k, v)
     else:
         status = Aluno.Status.PENDENTE if config.aprovar_perfis else Aluno.Status.APROVADO
         aluno = Aluno(email=dados["email"], ano=dados["ano"], status=status, **campos)
-    aluno.save()
-    for imagem in imagens:
-        FotoAluno.objects.create(aluno=aluno, imagem=imagem, ano=dados["ano"])
+    # Registrado aqui, como check-in do visitante, e não como cadastro genérico pelos signals.
+    with sem_registro():
+        aluno.save()
+        for imagem in imagens:
+            FotoAluno.objects.create(aluno=aluno, imagem=imagem, ano=dados["ano"])
+    tipo = Registro.Tipo.CHECKIN_NOVO if novo else Registro.Tipo.CHECKIN_ATUALIZADO
+    registrar(tipo, f"Check-in: {aluno}", autor=VISITANTE, aluno_ref=aluno.pk)
+    for _ in imagens:
+        registrar(Registro.Tipo.FOTO_ENVIADA, f"Foto enviada por {aluno.nome}", autor=VISITANTE, aluno_ref=aluno.pk)
     return aluno

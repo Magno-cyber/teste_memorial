@@ -16,6 +16,7 @@ celular do visitante pelo QR Code da placa de entrada.
   reencontrar colegas.
 - **Famílias e visitantes**: conhecem a história da escola pelo percurso.
 - **Equipe do Memorial**: cadastra o conteúdo, aprova fotos enviadas e atende pedidos de remoção.
+- **Administrativo da instituição**: acompanha as entradas e saídas do sistema em `/administracao/`, sentado, em computador.
 
 Nos totens, todos leem de pé, a 50–80 cm da tela, só com o toque, muitas vezes em grupo e sem
 instrução. No check-in, cada um usa o próprio celular, em pé, na entrada.
@@ -46,6 +47,7 @@ percurso e, no fim, encontra o próprio nome e os colegas da mesma turma.
   opcionais e autorização obrigatória. Mesmo e-mail + mesmo ano atualiza o cadastro.
 - **Privacidade**: e-mail nunca sai do servidor; perfil só com consentimento; fotos só depois de
   aprovadas; remoção completa pelo admin. O termo precisa ser validado pela escola.
+- **Registro de entradas e saídas**: só leitura, sem e-mail nem IP; o nome some quando o ex-aluno é removido.
 - **Contrato da API**: `/api/memorial/` (sala, versão, alunos, perfil, check-in). Ver README.
 - **Quiosque**: sem zoom, sem menu de toque longo, sem teclado do sistema (teclado virtual próprio),
   botão Voltar nunca sai do app.

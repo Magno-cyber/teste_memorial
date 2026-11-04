@@ -47,13 +47,13 @@ teclado virtual, cache offline, modo demo (`VITE_MODO_DEMO=1`), alvos de toque �
 Fora do escopo, de propósito (não existem na API): botão "Conectar", "Abrir no celular" (QR do perfil), cidade, LinkedIn,
 categorias de álbum. O perfil mostra só o que a API já entrega (ano, turma, Instagram/Facebook, fotos aprovadas, colegas).
 
-## Contrato que o backend precisa entregar (`GET /api/memorial/sala/<n>/`)
+## Contrato do backend (`GET /api/memorial/sala/<n>/`)
 
-O frontend já funciona com a API antiga (cai em valores derivados), mas o conteúdo novo só aparece quando o backend mandar:
+Implementado no backend (migrações `0010` a `0012`) e cadastrado pelo `/admin`:
 
-- **Salas 1 a 6** (hoje o `Sala.numero` tem validador máximo 5 e a migration 0009 cria 5). Slugs/cores:
+- **Salas 1 a 6**. Slugs/cores:
   `fundacao #8E6918`, `diretores #2F62B0`, `professores #17805F`, `artes #C43F60`, `esporte #B85A0C`, `alunos #6E4BA8`.
-  A Sala 06 deve ter `tipo: "fechamento"`; as demais, `"conteudo"`. Até isso existir, `?sala=6` dá 404.
+  A Sala 06 tem `tipo: "fechamento"`; as demais, `"conteudo"`.
 - `apresentacao` (opcional): `{ titulo, texto: string[], foto?: url|null, legenda, icone }`.
 - `decadas` (opcional, 7 itens): `{ id, rotulo: "Anos 60", periodo: "1958 a 1969", titulo, resumo, icone, foto?, acontecimentos: [{ano, texto} × 3] }`.
 - `marcos[]`: 4 por espaço; campos novos opcionais `foto` (url|null) e `texto` (texto longo, aberto no toque).
@@ -62,10 +62,8 @@ O frontend já funciona com a API antiga (cai em valores derivados), mas o conte
 
 ## Atenção
 
-- `frontend/src/dados/exemplo.json` agora é o conteúdo do protótipo novo e **não é mais igual** ao `tour.json` do backend.
-  `scripts/extrair_exemplo.py` ainda extrai o protótipo antigo e sobrescreveria o arquivo: não rode antes de atualizá-lo.
-- `testes/e2e.mjs` foi atualizado para a nova estrutura, mas **não foi executado** (precisa do backend + `carregar_exemplo`
-  com os 6 espaços). Os trechos que dependem do conteúdo do servidor (contagem de fotos por período) podem precisar de ajuste.
+- `frontend/src/dados/exemplo.json` e o `tour.json` do backend têm o mesmo conteúdo: mude os dois juntos.
+  `scripts/extrair_exemplo.py` ainda extrai o protótipo antigo e sobrescreveria os dois: não rode antes de atualizá-lo.
 - Contraste: o protótipo tinha dois pares abaixo de 4,5:1 (dourado-texto sobre champanhe, 4,37; cinza secundário sobre branco
   gelo, 4,19) e a cor Esporte não sustenta texto em branco gelo (4,37). Escurecemos os dois tons e o texto sobre a cor do espaço
   é branco puro. O `contraste.test.ts` cobre isso.

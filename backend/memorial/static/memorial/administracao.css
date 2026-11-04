@@ -1,0 +1,122 @@
+/* Painel da administração. Mesmas cores e fontes do totem (frontend/src/estilos/tokens.css),
+   em escala de mesa: quem usa está sentado, com mouse, lendo uma tabela densa. */
+@font-face { font-family: "Montserrat"; font-weight: 400; font-display: swap; src: url("fontes/montserrat-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-weight: 600; font-display: swap; src: url("fontes/montserrat-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Cormorant Garamond"; font-weight: 600; font-display: swap; src: url("fontes/cormorant-garamond-latin-600-normal.woff2") format("woff2"); }
+
+:root {
+  --grafite: #23211d;
+  --dourado: #c29a45;
+  --dourado-texto: #855f10;
+  --dourado-fundo: #f4e9cf;
+  --marfim: #f6f8f8;
+  --areia: #eef2f1;
+  --cartao: #ffffff;
+  --linha: #e0e6e5;
+  --suave: #5a5f62;
+  --entrada: #17805f;
+  --saida: #a8510a;
+}
+
+* { box-sizing: border-box; }
+html { color-scheme: light; scrollbar-color: #c3cbca var(--marfim); }
+body {
+  margin: 0; background: var(--marfim); color: var(--grafite);
+  font: 400 0.9375rem/1.5 "Montserrat", system-ui, sans-serif;
+}
+::selection { background: var(--dourado-fundo); color: var(--grafite); }
+:focus-visible { outline: 2px solid var(--dourado-texto); outline-offset: 2px; border-radius: 3px; }
+a { color: var(--dourado-texto); text-underline-offset: 3px; }
+.oculto { position: absolute; }
+.num { font-variant-numeric: tabular-nums; }
+
+.topo {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  padding: 0.75rem clamp(1rem, 3vw, 2.5rem); background: var(--cartao); border-bottom: 1px solid var(--linha);
+}
+.topo__marca { height: 44px; width: auto; display: block; }
+.topo__acoes { display: flex; align-items: center; gap: 1.25rem; font-size: 0.875rem; }
+.topo__acoes form { margin: 0; }
+.topo__usuario { color: var(--suave); }
+.link { all: unset; color: var(--dourado-texto); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.link:focus-visible { outline: 2px solid var(--dourado-texto); outline-offset: 2px; }
+
+.pagina { max-width: 1320px; margin: 0 auto; padding: 2rem clamp(1rem, 3vw, 2.5rem) 3rem; }
+h1 { margin: 0; font: 600 2.5rem/1.1 "Cormorant Garamond", Georgia, serif; }
+.intro { margin: 0.5rem 0 0; color: var(--suave); max-width: 70ch; }
+
+.resumo {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1rem 0;
+  margin: 1.75rem 0 2rem; padding: 1rem 0; border-block: 1px solid var(--linha);
+}
+.resumo > div { padding: 0 1.5rem; border-left: 1px solid var(--linha); }
+.resumo > div:first-child { padding-left: 0; border-left: 0; }
+.resumo dt { font-size: 0.8125rem; color: var(--suave); }
+.resumo dd { margin: 0.125rem 0 0; font-size: 1.5rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.resumo dd small { font-size: 0.875rem; font-weight: 400; color: var(--suave); }
+.resumo__link { font-size: 0.8125rem; }
+
+.filtros { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.75rem; }
+.campo { display: flex; flex-direction: column; gap: 0.25rem; flex: 0 1 11rem; min-width: 9.5rem; }
+.campo--busca { flex: 1 1 18rem; }
+.campo label { font-size: 0.8125rem; font-weight: 600; }
+input, select {
+  height: 2.5rem; width: 100%; padding: 0 0.625rem; font: inherit; color: inherit; accent-color: var(--dourado-texto);
+  background: var(--cartao); border: 1px solid #aeb7b6; border-radius: 6px;
+}
+input::placeholder { color: var(--suave); }
+input:hover, select:hover { border-color: var(--suave); }
+.filtros__botoes { display: flex; gap: 0.5rem; }
+
+.botao {
+  display: inline-flex; align-items: center; height: 2.5rem; padding: 0 1rem; font: 600 0.875rem "Montserrat", sans-serif;
+  color: var(--grafite); text-decoration: none; background: var(--cartao); border: 1px solid #aeb7b6; border-radius: 6px;
+  cursor: pointer; transition: background-color 150ms ease-out;
+}
+.botao:hover { background: var(--areia); }
+.botao--forte { color: #fff; background: var(--grafite); border-color: var(--grafite); }
+.botao--forte:hover { background: #3a3732; }
+
+.barra { display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem; flex-wrap: wrap; margin-top: 1.5rem; }
+.direcoes { display: flex; gap: 1.5rem; border-bottom: 1px solid var(--linha); flex: 1; min-width: 16rem; }
+.direcoes a {
+  padding: 0.5rem 0; margin-bottom: -1px; color: var(--suave); font-weight: 600; font-size: 0.875rem; text-decoration: none;
+  border-bottom: 2px solid transparent; transition: color 150ms ease-out;
+}
+.direcoes a:hover { color: var(--grafite); }
+.direcoes a[aria-current] { color: var(--grafite); border-bottom-color: var(--dourado); }
+.direcoes span { font-weight: 400; font-variant-numeric: tabular-nums; margin-left: 0.25rem; }
+
+.tabela { margin-top: 1rem; background: var(--cartao); border: 1px solid var(--linha); border-radius: 8px; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+th {
+  position: sticky; top: 0; text-align: left; font-size: 0.8125rem; font-weight: 600; color: var(--suave);
+  background: var(--areia); white-space: nowrap;
+}
+th, td { padding: 0.625rem 0.875rem; }
+td { border-top: 1px solid var(--linha); vertical-align: top; overflow-wrap: anywhere; }
+tbody tr:hover { background: var(--marfim); }
+td:nth-child(1), td:nth-child(2), td:nth-child(3) { white-space: nowrap; overflow-wrap: normal; }
+.direcao { display: inline-flex; align-items: center; gap: 0.25rem; font-weight: 600; }
+.direcao--entrada { color: var(--entrada); }
+.direcao--saida { color: var(--saida); }
+
+.paginacao { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 1.25rem; color: var(--suave); font-size: 0.875rem; }
+.vazio { margin-top: 1rem; padding: 3rem 1.5rem; text-align: center; color: var(--suave); background: var(--cartao); border: 1px solid var(--linha); border-radius: 8px; }
+.vazio p { margin: 0 0 1rem; }
+.vazio p:last-child { margin: 0; }
+
+/* Celular: cada registro vira um bloco com os rótulos ao lado. */
+@media (max-width: 760px) {
+  thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  table, tbody, tr, td { display: block; }
+  tr + tr { border-top: 1px solid var(--linha); }
+  tr { padding: 0.5rem 0; }
+  td, td:nth-child(n) {
+    display: grid; grid-template-columns: 6.5rem 1fr; gap: 0.5rem; padding: 0.2rem 0.875rem; border: 0;
+    white-space: normal; overflow-wrap: anywhere;
+  }
+  td::before { content: attr(data-rotulo); color: var(--suave); font-size: 0.8125rem; }
+  .resumo > div { border-left: 0; padding: 0; }
+  .resumo { grid-template-columns: 1fr 1fr; }
+}

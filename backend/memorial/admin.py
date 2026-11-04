@@ -7,7 +7,10 @@ from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html
 
-from .models import Aluno, ConfiguracaoMemorial, Foto, FotoAluno, Marco, Sala, Video
+from .models import (
+    Acontecimento, Aluno, Apresentacao, ConfiguracaoMemorial, Decada, Foto, FotoAluno, Marco, Registro, Sala, Video,
+)
+from .registro import registrar
 
 CODECS_OK = {"h264", "vp8", "vp9"}
 TIPOS_VIDEO = ["Depoimento", "Documentário", "Acervo", "Institucional"]
@@ -23,6 +26,19 @@ def _duracao(segundos):
     return f"{segundos // 60}:{segundos % 60:02d}" if segundos else "—"
 
 
+def _alterar_em_lote(qs, acao, **campos):
+    """update() não dispara signals nem o auto_now: o registro e a versão da sala são feitos aqui.
+
+    Sem atualizado_em, o totem não perceberia a mudança (a versão da sala vem dele).
+    """
+    objetos = list(qs)
+    n = qs.update(atualizado_em=timezone.now(), **campos)
+    for obj in objetos:
+        referencia = obj.pk if isinstance(obj, Aluno) else getattr(obj, "aluno_id", None)
+        registrar(Registro.Tipo.CADASTRO_ALTERADO, f"{acao}: {obj}", aluno_ref=referencia)
+    return n
+
+
 class ConteudoAdmin(admin.ModelAdmin):
     """Ações comuns ao conteúdo das salas."""
 
@@ -30,15 +46,15 @@ class ConteudoAdmin(admin.ModelAdmin):
 
     @admin.action(description="Publicar no totem")
     def publicar(self, request, qs):
-        qs.update(publicado=True)
+        _alterar_em_lote(qs, "Publicado no totem", publicado=True)
 
     @admin.action(description="Tirar do totem")
     def despublicar(self, request, qs):
-        qs.update(publicado=False)
+        _alterar_em_lote(qs, "Tirado do totem", publicado=False)
 
     @admin.action(description="Marcar como conteúdo oficial (não é exemplo)")
     def marcar_oficial(self, request, qs):
-        qs.update(demonstrativo=False)
+        _alterar_em_lote(qs, "Marcado como oficial", demonstrativo=False)
 
 
 class ListaSugestoes(forms.TextInput):
@@ -98,10 +114,25 @@ class SalaForm(forms.ModelForm):
 
 # ---------------------------------------------------------------- salas
 
-class MarcoInline(admin.TabularInline):
+class ApresentacaoInline(admin.StackedInline):
+    model = Apresentacao
+    max_num = 1
+    fields = ["titulo", "texto", ("foto", "legenda", "icone"), ("publicado", "demonstrativo")]
+
+
+class DecadaInline(admin.TabularInline):
+    """Os acontecimentos de cada década são editados na página dela (link "Alterar")."""
+
+    model = Decada
+    extra = 0
+    fields = ["rotulo", "periodo", "titulo", "resumo", "icone", "foto", "ordem", "publicado", "demonstrativo"]
+    show_change_link = True
+
+
+class MarcoInline(admin.StackedInline):
     model = Marco
     extra = 0
-    fields = ["ano", "titulo", "descricao", "icone", "destaque", "ordem", "publicado", "demonstrativo"]
+    fields = [("ano", "titulo", "icone"), "descricao", "texto", "foto", ("destaque", "ordem", "publicado", "demonstrativo")]
     show_change_link = True
 
 
@@ -131,18 +162,10 @@ class SalaAdmin(admin.ModelAdmin):
         ("Fotos", {"fields": ["enviar_fotos", "ano_das_fotos"]}),
     ]
 
+    inlines = [ApresentacaoInline, DecadaInline, MarcoInline, VideoInline]
+
     def has_add_permission(self, request):
-        return Sala.objects.count() < 5
-
-    def get_fieldsets(self, request, obj=None):
-        if obj and obj.tipo == Sala.Tipo.FECHAMENTO:
-            return self.fieldsets[:1]
-        return self.fieldsets
-
-    def get_inlines(self, request, obj):
-        if obj and obj.tipo == Sala.Tipo.FECHAMENTO:
-            return []
-        return [MarcoInline, VideoInline]
+        return Sala.objects.count() < 6
 
     @admin.display(description="cor")
     def cor_amostra(self, obj):
@@ -181,6 +204,50 @@ class SalaAdmin(admin.ModelAdmin):
             messages.success(request, f"{len(arquivos)} foto(s) de {ano} adicionada(s). Revise as legendas em Fotos.")
 
 
+@admin.register(Apresentacao)
+class ApresentacaoAdmin(ConteudoAdmin):
+    list_display = ["sala", "titulo", "demonstrativo", "publicado"]
+    list_display_links = ["sala", "titulo"]
+    list_filter = ["demonstrativo", "publicado"]
+    list_editable = ["publicado"]
+    search_fields = ["titulo", "texto"]
+    readonly_fields = ["preview"]
+    fields = ["sala", "titulo", "texto", "foto", "preview", "legenda", "icone", "publicado", "demonstrativo"]
+
+    @admin.display(description="prévia")
+    def preview(self, obj):
+        return _thumb(obj.foto, 200)
+
+
+class AcontecimentoInline(admin.TabularInline):
+    model = Acontecimento
+    extra = 1
+    fields = ["ano", "texto", "ordem"]
+
+
+@admin.register(Decada)
+class DecadaAdmin(ConteudoAdmin):
+    list_display = ["rotulo", "titulo", "sala", "periodo", "qtd_acontecimentos", "ordem", "demonstrativo", "publicado"]
+    list_display_links = ["rotulo", "titulo"]
+    list_filter = ["sala", "demonstrativo", "publicado"]
+    list_editable = ["publicado"]
+    search_fields = ["titulo", "resumo", "acontecimentos__texto"]
+    readonly_fields = ["preview"]
+    fields = ["sala", "rotulo", "periodo", "titulo", "resumo", "icone", "foto", "preview", "ordem", "publicado", "demonstrativo"]
+    inlines = [AcontecimentoInline]
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).prefetch_related("acontecimentos")
+
+    @admin.display(description="acontecimentos")
+    def qtd_acontecimentos(self, obj):
+        return len(obj.acontecimentos.all())
+
+    @admin.display(description="prévia")
+    def preview(self, obj):
+        return _thumb(obj.foto, 200)
+
+
 @admin.register(Marco)
 class MarcoAdmin(ConteudoAdmin):
     list_display = ["ano", "titulo", "sala", "icone", "destaque", "demonstrativo", "publicado"]
@@ -188,7 +255,12 @@ class MarcoAdmin(ConteudoAdmin):
     list_filter = ["sala", "destaque", "demonstrativo", "publicado"]
     list_editable = ["publicado"]
     search_fields = ["titulo", "descricao"]
-    fields = ["sala", "ano", "titulo", "descricao", "icone", "destaque", "ordem", "publicado", "demonstrativo"]
+    readonly_fields = ["preview"]
+    fields = ["sala", "ano", "titulo", "descricao", "texto", "icone", "foto", "preview", "destaque", "ordem", "publicado", "demonstrativo"]
+
+    @admin.display(description="prévia")
+    def preview(self, obj):
+        return _thumb(obj.foto, 200)
 
 
 @admin.register(Foto)
@@ -310,14 +382,14 @@ class AlunoAdmin(admin.ModelAdmin):
     def avatar(self, obj):
         return _thumb(obj.foto, 96)
 
-    @admin.action(description="Aprovar (aparece na sala 5)")
+    @admin.action(description="Aprovar (aparece na Sala 06)")
     def aprovar(self, request, qs):
-        n = qs.update(status=Aluno.Status.APROVADO)
+        n = _alterar_em_lote(qs, "Perfil aprovado", status=Aluno.Status.APROVADO)
         messages.success(request, f"{n} perfil(is) aprovado(s).")
 
-    @admin.action(description="Ocultar da sala 5")
+    @admin.action(description="Ocultar da Sala 06")
     def ocultar(self, request, qs):
-        n = qs.update(status=Aluno.Status.OCULTO)
+        n = _alterar_em_lote(qs, "Perfil oculto", status=Aluno.Status.OCULTO)
         messages.success(request, f"{n} perfil(is) oculto(s).")
 
     def save_model(self, request, obj, form, change):
@@ -350,13 +422,37 @@ class FotoAlunoAdmin(admin.ModelAdmin):
 
     @admin.action(description="Aprovar (aparece no perfil)")
     def aprovar(self, request, qs):
-        n = qs.update(status=FotoAluno.Status.APROVADA)
+        n = _alterar_em_lote(qs, "Foto aprovada", status=FotoAluno.Status.APROVADA)
         messages.success(request, f"{n} foto(s) aprovada(s).")
 
     @admin.action(description="Recusar")
     def recusar(self, request, qs):
-        n = qs.update(status=FotoAluno.Status.RECUSADA)
+        n = _alterar_em_lote(qs, "Foto recusada", status=FotoAluno.Status.RECUSADA)
         messages.success(request, f"{n} foto(s) recusada(s).")
+
+
+# ---------------------------------------------------------------- entradas e saídas
+
+@admin.register(Registro)
+class RegistroAdmin(admin.ModelAdmin):
+    """Só leitura: o registro é escrito pelo sistema. O painel completo fica em /administracao/."""
+
+    change_list_template = "admin/memorial/registro/change_list.html"
+    list_display = ["em", "direcao", "tipo", "descricao", "autor"]
+    list_display_links = ["em", "descricao"]
+    list_filter = ["direcao", "tipo"]
+    search_fields = ["descricao", "autor"]
+    date_hierarchy = "em"
+    list_per_page = 50
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 # ---------------------------------------------------------------- configuração e QR Code

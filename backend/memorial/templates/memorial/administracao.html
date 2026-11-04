@@ -1,0 +1,111 @@
+{% load static %}<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Entradas e saídas · Memorial Dom Bosco</title>
+  <link rel="stylesheet" href="{% static 'memorial/administracao.css' %}">
+</head>
+<body>
+<svg width="0" height="0" class="oculto" aria-hidden="true">
+  <symbol id="seta-entrada" viewBox="0 0 16 16"><path d="M12 4 4 12M4 6v6h6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="seta-saida" viewBox="0 0 16 16"><path d="M4 12l8-8M6 4h6v6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<header class="topo">
+  <img class="topo__marca" src="{% static 'memorial/marcas/assinatura-dourada.png' %}" alt="Memorial Dom Bosco Maria Izabel Rodrigues">
+  <nav class="topo__acoes" aria-label="Conta">
+    <span class="topo__usuario">{{ request.user.get_username }}</span>
+    <a href="{% url 'admin:index' %}">Admin do Django</a>
+    <form method="post" action="{% url 'admin:logout' %}">{% csrf_token %}<button type="submit" class="link">Sair</button></form>
+  </nav>
+</header>
+
+<main class="pagina">
+  <h1>Entradas e saídas</h1>
+  <p class="intro">Tudo que chegou ao sistema (check-ins, fotos, cadastros, logins) e tudo que saiu dele (remoções, exportações, logouts). Este registro não pode ser editado.</p>
+
+  <dl class="resumo">
+    <div><dt>Entradas hoje</dt><dd>{{ hoje.entradas }}</dd></div>
+    <div><dt>Saídas hoje</dt><dd>{{ hoje.saidas }}</dd></div>
+    <div><dt>Ex-alunos com check-in</dt><dd>{{ checkins }}</dd></div>
+    <div>
+      <dt>Aguardando aprovação</dt>
+      <dd>{{ fotos_pendentes }} <small>{{ fotos_pendentes|pluralize:"foto,fotos" }}</small> · {{ perfis_pendentes }} <small>{{ perfis_pendentes|pluralize:"perfil,perfis" }}</small></dd>
+      {% if pode_moderar and fotos_pendentes or pode_moderar and perfis_pendentes %}
+        <a class="resumo__link" href="{% if fotos_pendentes %}{% url 'admin:memorial_fotoaluno_changelist' %}?status__exact=pendente{% else %}{% url 'admin:memorial_aluno_changelist' %}?status__exact=pendente{% endif %}">Revisar no admin</a>
+      {% endif %}
+    </div>
+  </dl>
+
+  <form class="filtros" method="get" role="search">
+    <input type="hidden" name="direcao" value="{{ filtros.direcao }}">
+    <div class="campo campo--busca">
+      <label for="f-q">Buscar por nome ou pessoa da equipe</label>
+      <input id="f-q" type="search" name="q" value="{{ filtros.q }}" placeholder="Ex.: joao silva">
+    </div>
+    <div class="campo">
+      <label for="f-tipo">Tipo</label>
+      <select id="f-tipo" name="tipo">
+        <option value="">Todos</option>
+        {% for valor, rotulo in tipos %}<option value="{{ valor }}"{% if valor == filtros.tipo %} selected{% endif %}>{{ rotulo }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="campo">
+      <label for="f-de">De</label>
+      <input id="f-de" type="date" name="de" value="{{ filtros.de|date:'Y-m-d' }}">
+    </div>
+    <div class="campo">
+      <label for="f-ate">Até</label>
+      <input id="f-ate" type="date" name="ate" value="{{ filtros.ate|date:'Y-m-d' }}">
+    </div>
+    <div class="filtros__botoes">
+      <button type="submit" class="botao botao--forte">Filtrar</button>
+      {% if tem_filtro %}<a class="botao" href="{% url 'administracao' %}">Limpar</a>{% endif %}
+    </div>
+  </form>
+
+  <div class="barra">
+    <nav class="direcoes" aria-label="Direção">
+      <a href="{% querystring direcao=None pagina=None %}"{% if not filtros.direcao %} aria-current="true"{% endif %}>Todas <span>{{ contagem.todas }}</span></a>
+      <a href="{% querystring direcao='entrada' pagina=None %}"{% if filtros.direcao == 'entrada' %} aria-current="true"{% endif %}>Entradas <span>{{ contagem.entradas }}</span></a>
+      <a href="{% querystring direcao='saida' pagina=None %}"{% if filtros.direcao == 'saida' %} aria-current="true"{% endif %}>Saídas <span>{{ contagem.saidas }}</span></a>
+    </nav>
+    {% if pagina.paginator.count %}
+      <a class="botao" href="{% url 'administracao_exportar' %}{% querystring pagina=None %}">Exportar CSV</a>
+    {% endif %}
+  </div>
+
+  {% if pagina.object_list %}
+    <div class="tabela">
+      <table>
+        <thead>
+          <tr><th scope="col">Data e hora</th><th scope="col">Direção</th><th scope="col">Tipo</th><th scope="col">Descrição</th><th scope="col">Quem</th></tr>
+        </thead>
+        <tbody>
+          {% for r in pagina.object_list %}
+            <tr>
+              <td class="num" data-rotulo="Data e hora">{{ r.em|date:"d/m/Y H:i:s" }}</td>
+              <td data-rotulo="Direção"><span class="direcao direcao--{{ r.direcao }}"><svg width="16" height="16" aria-hidden="true"><use href="#seta-{{ r.direcao }}"/></svg>{{ r.get_direcao_display }}</span></td>
+              <td data-rotulo="Tipo">{{ r.get_tipo_display }}</td>
+              <td data-rotulo="Descrição">{{ r.descricao }}</td>
+              <td data-rotulo="Quem">{{ r.autor }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <nav class="paginacao" aria-label="Páginas">
+      {% if pagina.has_previous %}<a class="botao" href="{% querystring pagina=pagina.previous_page_number %}">Anterior</a>{% endif %}
+      <span class="num">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }} · {{ pagina.paginator.count }} registro{{ pagina.paginator.count|pluralize }}</span>
+      {% if pagina.has_next %}<a class="botao" href="{% querystring pagina=pagina.next_page_number %}">Próxima</a>{% endif %}
+    </nav>
+  {% elif tem_filtro %}
+    <div class="vazio"><p>Nenhum registro com estes filtros.</p><a class="botao" href="{% url 'administracao' %}">Limpar os filtros</a></div>
+  {% else %}
+    <div class="vazio"><p>Ainda não há registros. O primeiro check-in ou alteração no admin aparece aqui.</p></div>
+  {% endif %}
+</main>
+</body>
+</html>

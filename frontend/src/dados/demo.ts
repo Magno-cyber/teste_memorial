@@ -5,8 +5,8 @@
  *
  * Fonte: exemplo.json, extraído do protótipo "Tour do Memorial · 6 espaços" (fotos, vídeos, períodos,
  * legendas, ex-alunos e, em `R`, a apresentação, as 7 décadas e os 4 marcos de cada espaço).
- * Atenção: este arquivo deixou de ser idêntico ao backend/memorial/exemplo/tour.json, que ainda é o
- * das 5 salas; scripts/extrair_exemplo.py sobrescreveria os dois com o protótipo antigo.
+ * Atenção: backend/memorial/exemplo/tour.json tem o mesmo conteúdo; mude os dois juntos.
+ * scripts/extrair_exemplo.py sobrescreveria os dois com o protótipo antigo: não rode.
  */
 import { ErroHttp } from './erro';
 import exemplo from './exemplo.json';

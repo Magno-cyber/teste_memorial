@@ -8,9 +8,11 @@ fato histórico da escola: são textos e pessoas fictícios para avaliar as tela
     docker compose exec backend python manage.py carregar_exemplo --limpar   # apaga o conteúdo das salas antes
     docker compose exec backend python manage.py carregar_exemplo --remover  # só remove o que é exemplo
 
-Cria, por sala de conteúdo (1 a 4): 8 marcos, fotos de exemplo em todos os períodos de 5 anos (sem
-imagem real: o totem mostra uma moldura provisória) e 5 vídeos curtos gerados com ffmpeg. Na sala 5:
-22 ex-alunos, com avatares e fotos aprovadas desenhados aqui mesmo.
+Cria, em cada um dos 6 espaços: a apresentação, 7 décadas, 4 marcos, fotos de exemplo em todos os
+períodos de 5 anos (sem imagem real: o totem mostra uma moldura provisória) e vídeos curtos gerados
+com ffmpeg. Na Sala 06, também 22 ex-alunos, com avatares e fotos aprovadas desenhados aqui mesmo.
+
+Nada disto entra nas entradas e saídas do sistema (/administracao/): não é movimento real.
 
 Ex-alunos reais (que fizeram check-in) nunca são apagados por este comando, nem com --limpar.
 """
@@ -30,7 +32,10 @@ from django.db import transaction
 from django.utils import timezone
 from PIL import Image, ImageDraw, ImageFilter
 
-from memorial.models import Aluno, ConfiguracaoMemorial, Foto, FotoAluno, Marco, Sala, Video, ano_atual
+from memorial.models import (
+    Acontecimento, Aluno, Apresentacao, ConfiguracaoMemorial, Decada, Foto, FotoAluno, Marco, Sala, Video, ano_atual,
+)
+from memorial.registro import sem_registro
 
 DADOS = Path(__file__).resolve().parents[2] / "exemplo" / "tour.json"
 CREDITO = "Conteúdo de exemplo · Memorial Dom Bosco"
@@ -94,20 +99,26 @@ def imagem_exemplo(largura, altura, tom, pessoa=False, semente=0):
 
 
 class Command(BaseCommand):
-    help = "Carrega o conteúdo de exemplo das 5 salas (marcado como demonstrativo)."
+    help = "Carrega o conteúdo de exemplo dos 6 espaços (marcado como demonstrativo)."
 
     def add_arguments(self, parser):
         parser.add_argument("--limpar", action="store_true",
-                            help="Apaga TODO o conteúdo das salas (marcos, fotos, vídeos) e os ex-alunos de exemplo antes.")
+                            help="Apaga TODO o conteúdo das salas (apresentações, décadas, marcos, fotos, vídeos) e os ex-alunos de exemplo antes.")
         parser.add_argument("--remover", action="store_true",
                             help="Só remove o conteúdo de exemplo, sem carregar de novo.")
 
-    def handle(self, *args, limpar=False, remover=False, **opts):
+    def handle(self, *args, **opts):
+        with sem_registro():
+            self.executar(*args, **opts)
+
+    def executar(self, *args, limpar=False, remover=False, **opts):
+        conteudo = (Apresentacao, Decada, Marco, Foto, Video)
         if remover:
-            self.stdout.write(f"Removidos: {self.apagar(Marco.objects.filter(demonstrativo=True), Foto.objects.filter(demonstrativo=True), Video.objects.filter(demonstrativo=True), Aluno.objects.filter(demonstrativo=True))} itens de exemplo.")
+            exemplos = [m.objects.filter(demonstrativo=True) for m in (*conteudo, Aluno)]
+            self.stdout.write(f"Removidos: {self.apagar(*exemplos)} itens de exemplo.")
             return
         if limpar:
-            n = self.apagar(Marco.objects.all(), Foto.objects.all(), Video.objects.all(), Aluno.objects.filter(demonstrativo=True))
+            n = self.apagar(*[m.objects.all() for m in conteudo], Aluno.objects.filter(demonstrativo=True))
             self.stdout.write(f"Conteúdo das salas apagado ({n} itens).")
         elif Marco.objects.filter(demonstrativo=True).exists() or Aluno.objects.filter(demonstrativo=True).exists():
             self.stdout.write("O conteúdo de exemplo já está carregado. Use --limpar para recarregar.")
@@ -134,17 +145,28 @@ class Command(BaseCommand):
         config = ConfiguracaoMemorial.atual()
         blocos = periodos(config.ano_inicial, ano_atual())
         comum = {"demonstrativo": True, "publicado": True}
-        for chave, hist in dados["hist"].items():
+        for chave, r in dados["R"].items():
             sala = Sala.objects.get(numero=int(chave))
-            for i, (ano, (icone, titulo, descricao)) in enumerate(zip(hist["years"], hist["cards"])):
-                Marco.objects.create(sala=sala, ano=ano, titulo=titulo, descricao=descricao, icone=icone,
-                                     destaque=i == hist["hi"], ordem=i, **comum)
+            Apresentacao.objects.create(
+                sala=sala, titulo=r["aptitle"], texto="\n\n".join(r["intro"]), legenda=r["apcap"], icone=r["apicon"], **comum,
+            )
+            for i, d in enumerate(r["dec"]):
+                decada = Decada.objects.create(
+                    sala=sala, rotulo=dados["decn"][i], periodo=dados["decr"][i], titulo=d["t"], resumo=d["d"],
+                    icone=d["icn"], ordem=i, **comum,
+                )
+                for j, evento in enumerate(d["ev"]):
+                    ano, texto = evento.split(" · ", 1)
+                    Acontecimento.objects.create(decada=decada, ano=int(ano), texto=texto, ordem=j)
+            for i, (icone, ano, titulo, descricao, texto) in enumerate(r["marcos"]):
+                Marco.objects.create(sala=sala, ano=ano, titulo=titulo, descricao=descricao, texto=texto, icone=icone,
+                                     ordem=i, **comum)
             fotos = []
             for indice, (inicio, fim) in enumerate(blocos):
                 for ordem, (ano, legenda) in enumerate(fotos_do_periodo(dados, chave, indice, inicio, fim)):
                     fotos.append(Foto(sala=sala, ano=ano, legenda=legenda, credito=CREDITO, ordem=ordem, **comum))
             Foto.objects.bulk_create(fotos)
-            self.stdout.write(f"Sala {chave}: {len(hist['years'])} marcos, {len(fotos)} fotos de exemplo.")
+            self.stdout.write(f"Sala {chave}: {len(r['dec'])} décadas, {len(r['marcos'])} marcos, {len(fotos)} fotos de exemplo.")
 
     def carregar_alunos(self, dados):
         config = ConfiguracaoMemorial.atual()
@@ -168,7 +190,7 @@ class Command(BaseCommand):
                     aluno=aluno, imagem=imagem_exemplo(1200, 900, TONS[(i * 3 + j) % len(TONS)], semente=i * 10 + j),
                     legenda=legenda, ano=ano, status=FotoAluno.Status.APROVADA,
                 )
-        self.stdout.write(f"Sala 5: {len(dados['people'])} ex-alunos de exemplo.")
+        self.stdout.write(f"Sala 06: {len(dados['people'])} ex-alunos de exemplo.")
 
     def carregar_videos(self, dados):
         if not shutil.which("ffmpeg"):
